@@ -1,19 +1,12 @@
 # Netlify 배포 설정
-# 홈페이지는 connect 폴더만 공개합니다.
-# 저장소의 다른 폴더(카카오톡 대화내용, 로블록스 등)는 절대 배포되지 않습니다.
+# 홈페이지에 필요한 파일만 dist 폴더로 복사해서 그 폴더만 공개합니다.
+# - 저장소의 다른 폴더(카카오톡 대화내용, 로블록스 등)는 배포되지 않습니다.
+# - connect 안의 사업 문서(*.md), DB·시험 파일(supabase/), 스크린샷도 배포되지 않습니다.
+# 새 화면 파일을 추가하면 아래 cp 목록에 넣어 주세요.
 [build]
-  publish = "connect"
-  command = ""
-
-# 개발·시험용 파일은 공개하지 않음
-[[redirects]]
-  from = "/supabase/*"
-  to = "/404.html"
-  status = 404
-  force = true
-
-[[redirects]]
-  from = "/*.md"
-  to = "/404.html"
-  status = 404
-  force = true
+  publish = "dist"
+  command = """
+    rm -rf dist && mkdir -p dist &&
+    cp connect/*.html connect/manifest.webmanifest connect/sw.js dist/ &&
+    cp -r connect/css connect/js connect/vendor connect/icons dist/
+  """
