@@ -10,6 +10,7 @@
 <script src="vendor/supabase.js"></script>
 <script src="js/config.js"></script>
 <script src="js/sb.js"></script>
+<script src="js/launch.js"></script>
 </head>
 <body class="rp-body">
 <header class="nav" id="nav"></header>
@@ -151,7 +152,7 @@
         const mine = myResp.find((x) => x.request_id === r.id);
         return `<button class="row-card" data-rid="${r.id}"><div class="feed-card">
           <div class="thumb" data-thumb="${esc(r.thumbnail_path || "")}">📦</div>
-          <div class="body"><div class="row-top">${r.kind === "direct" ? '<span class="sbadge s-amber">지정 의뢰</span>' : ""}${mine ? badgeOf(mine.status) : ""}<span class="muted">${esc(r.code)}</span></div>
+          <div class="body"><div class="row-top">${r.fee_type === "followup" ? '<span class="sbadge s-green">기존 거래 파트너 문의</span>' : r.kind === "direct" ? '<span class="sbadge s-amber">지정 의뢰</span>' : ""}${r.stage ? `<span class="sbadge s-blue">${esc((LAUNCH.PHASES.find((p) => p.id === r.phase) || {}).label || "")} · ${esc(LAUNCH.STAGE_NAME[r.stage] || "")}</span>` : ""}${mine ? badgeOf(mine.status) : ""}<span class="muted">${esc(r.code)}</span></div>
             <b>${esc(r.title)}</b>
             <div class="row-meta"><span>${esc(cat.catName(r.major_id))}${r.minor_id ? " › " + esc(cat.catName(r.minor_id)) : ""}</span><span>수량 ${range(r.qty_min, r.qty_max, "개")}</span><span>마감 ${date(r.respond_until, true)}</span></div></div>
         </div></button>`; }).join("") : '<div class="panel muted">지금 응답할 수 있는 아이디어가 없습니다. 내 분야 아이디어가 올라오면 알려 드리겠습니다.</div>'}</div>
@@ -176,14 +177,16 @@
     let resp = myResp.find((x) => x.request_id === id) || null;
     let answers = [];
     if (resp) { const a = await sb.from("response_answers").select("*").eq("response_id", resp.id); answers = a.data || []; }
+    const svc = r.qty_min == null;  // 디자인·촬영·인증·물류처럼 수량이 없는 의뢰, 기존 파트너 문의
     const editable = r.status === "open" && (!resp || ["invited", "submitted"].includes(resp.status));
     const qItems = requiredItems(cat, r.major_id).concat(cat.items.filter((x) => (items.data || []).some((y) => y.item_id === x.id)));
     const aOf = (iid) => answers.find((x) => x.item_id === iid) || {};
     const v = (k) => (resp && resp[k] != null ? resp[k] : "");
     box.innerHTML = `
       <div class="panel">
-        <div class="row-top">${r.kind === "direct" ? '<span class="sbadge s-amber">지정 의뢰 · 회원님에게만 온 의뢰</span>' : ""}<span class="muted">${esc(r.code)}</span></div>
+        <div class="row-top">${r.fee_type === "followup" ? '<span class="sbadge s-green">기존 거래 파트너 문의 · 이미 함께한 의뢰자</span>' : r.kind === "direct" ? '<span class="sbadge s-amber">지정 의뢰 · 회원님에게만 온 의뢰</span>' : ""}${r.stage ? `<span class="sbadge s-blue">${esc((LAUNCH.PHASES.find((p) => p.id === r.phase) || {}).label || "")} · ${esc(LAUNCH.STAGE_NAME[r.stage] || "")}</span>` : ""}<span class="muted">${esc(r.code)}</span></div>
         <h2 style="margin-top:8px">${esc(r.title)}</h2>
+        ${r.context ? `<div class="note info" style="margin-bottom:10px"><b>출시 프로젝트 요약</b> ${esc(r.context)}</div>` : ""}
         <dl class="kv-grid">
           <div><dt>분야</dt><dd>${esc(cat.catName(r.major_id))}${r.minor_id ? " › " + esc(cat.catName(r.minor_id)) : ""}</dd></div>
           <div><dt>수량</dt><dd>${range(r.qty_min, r.qty_max, "개")}</dd></div>
@@ -200,9 +203,9 @@
         <h2 style="margin:0">체크리스트 응답 ${resp ? badgeOf(resp.status) : ""}</h2>
         ${editable ? "" : '<div class="note">응답을 고칠 수 없는 상태입니다.</div>'}
         <div class="row3">
-          <label>가능 수량 (개) <i>*</i><div class="range-in"><input name="qty_min" type="number" min="0" required value="${v("qty_min")}" placeholder="최소"><span>~</span><input name="qty_max" type="number" min="0" value="${v("qty_max")}" placeholder="최대"></div></label>
-          <label>예상 단가 (원) <i>*</i><div class="range-in"><input name="price_min" type="number" min="0" required value="${v("price_min")}" placeholder="최소"><span>~</span><input name="price_max" type="number" min="0" value="${v("price_max")}" placeholder="최대"></div></label>
-          <label>생산 기간 (일) <i>*</i><div class="range-in"><input name="due_min" type="number" min="0" required value="${v("due_min_days")}" placeholder="최소"><span>~</span><input name="due_max" type="number" min="0" value="${v("due_max_days")}" placeholder="최대"></div></label>
+          ${svc ? "" : `<label>가능 수량 (개) <i>*</i><div class="range-in"><input name="qty_min" type="number" min="0" required value="${v("qty_min")}" placeholder="최소"><span>~</span><input name="qty_max" type="number" min="0" value="${v("qty_max")}" placeholder="최대"></div></label>`}
+          <label>${svc ? "견적 금액 (원)" : "예상 단가 (원)"} <i>*</i><div class="range-in"><input name="price_min" type="number" min="0" required value="${v("price_min")}" placeholder="최소"><span>~</span><input name="price_max" type="number" min="0" value="${v("price_max")}" placeholder="최대"></div></label>
+          <label>${svc ? "작업 기간 (일)" : "생산 기간 (일)"} <i>*</i><div class="range-in"><input name="due_min" type="number" min="0" required value="${v("due_min_days")}" placeholder="최소"><span>~</span><input name="due_max" type="number" min="0" value="${v("due_max_days")}" placeholder="최대"></div></label>
         </div>
         <div id="rangePreview" class="chips"></div>
         <label>샘플 비용·기간<input name="sample_cost" value="${esc(v("sample_cost"))}" placeholder="예: 5만 원, 1주"></label>
@@ -219,9 +222,9 @@
       </form>`;
     box.querySelectorAll("[data-file]").forEach((a) => (a.onclick = async (e) => { e.preventDefault(); const u = await signedUrl(a.dataset.file); if (u) window.open(u, "_blank"); }));
     const f = $("#respForm");
-    const num0 = (n) => (f[n].value === "" ? null : Number(f[n].value));
+    const num0 = (n) => (!f[n] || f[n].value === "" ? null : Number(f[n].value));
     const preview = () => {
-      $("#rangePreview").innerHTML = [["수량", r.qty_min, r.qty_max, "qty"], ["단가", r.price_min, r.price_max, "price"], ["납기", r.due_min_days, r.due_max_days, "due"]]
+      $("#rangePreview").innerHTML = [["수량", r.qty_min, r.qty_max, "qty"], ["단가", r.price_min, r.price_max, "price"], ["납기", r.due_min_days, r.due_max_days, "due"]].filter((x) => !(svc && x[3] === "qty"))
         .map(([l, a, b, k]) => `<span class="chip">${l} ${ans(rangeMark(a, b, num0(k + "_min"), num0(k + "_max") ?? num0(k + "_min")))}</span>`).join("") +
         '<span class="muted" style="align-self:center">의뢰 범위와 비교한 결과 (✕면 선정에서 제외됩니다)</span>';
     };
@@ -235,7 +238,7 @@
       e.preventDefault();
       const msg = f.querySelector(".form-msg");
       let bad = null;
-      ["qty_min", "price_min", "due_min", "pledge"].forEach((n) => { const el = f[n], empty = el.type === "checkbox" ? !el.checked : el.value === ""; el.classList.toggle("invalid", empty); if (empty && !bad) bad = el; });
+      (svc ? ["price_min", "due_min", "pledge"] : ["qty_min", "price_min", "due_min", "pledge"]).forEach((n) => { const el = f[n], empty = el.type === "checkbox" ? !el.checked : el.value === ""; el.classList.toggle("invalid", empty); if (empty && !bad) bad = el; });
       const rows = $$(".ans-edit", f).map((el) => ({ item_id: +el.dataset.item, value: (el.querySelector(".seg .on") || {}).dataset ? el.querySelector(".seg .on").dataset.a : null, note: el.querySelector("[data-note]").value.trim() || null }));
       const missing = rows.find((x) => !x.value), pNoNote = rows.find((x) => x.value === "P" && !x.note);
       if (bad || missing || pNoNote) { msg.textContent = bad ? "표시된 항목을 채워 주세요." : missing ? "모든 항목에 가능 여부를 골라 주세요." : "▲ 조건부 항목은 조건을 메모에 적어 주세요."; msg.className = "form-msg err"; return; }

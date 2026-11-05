@@ -403,3 +403,56 @@ table.data th { background: var(--bg-alt); font-weight: 700; white-space: nowrap
 /* hidden 속성은 항상 숨김 (.form 등의 display 규칙보다 우선) */
 [hidden] { display: none !important; }
 .form .role-pick input { display: none; }
+
+/* ===================== 출시 프로젝트 의뢰서 ===================== */
+.qmark { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--line); background: #fff; color: var(--ink-3); font: 700 12px/1 inherit; cursor: pointer; vertical-align: middle; margin-left: 4px; padding: 0; flex: none; }
+.qmark:hover { border-color: var(--blue); color: var(--blue); }
+.help-pop { position: relative; z-index: 15; margin: 8px 0 0; background: var(--ink); color: #fff; font-size: 13px; font-weight: 400; line-height: 1.6; border-radius: 10px; padding: 10px 12px; text-align: left; }
+.phase-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.phase-tab { font: inherit; font-size: 14px; border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 8px 14px; cursor: pointer; color: var(--ink-2); display: grid; gap: 1px; text-align: left; }
+.phase-tab small { font-size: 11px; color: var(--ink-3); }
+.phase-tab.on { border-color: var(--blue); background: var(--blue-l); color: var(--blue-d); box-shadow: 0 0 0 1px var(--blue); }
+.phase-tab.done small { color: var(--green); font-weight: 700; }
+.step-panel { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 22px; margin-bottom: 16px; }
+.step-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.step-no { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--blue); color: #fff; font-weight: 800; font-size: 14px; }
+.step-head h2 { font-size: 18px; margin: 0; }
+.opt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.opt { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 12px 10px; cursor: pointer; background: #fff; display: grid; gap: 2px; align-content: start; }
+.opt:hover { border-color: #b9c7f5; }
+.opt.on { border-color: var(--blue); background: var(--blue-l); }
+.opt input { display: none; }
+.opt .opt-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-weight: 700; }
+.opt small { color: var(--ink-3); font-size: 12px; }
+.opt.disabled { opacity: .45; cursor: not-allowed; }
+.sub-form { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 14px; display: grid; gap: 14px; }
+.sub-form .row3, .sub-form .row2 { gap: 12px; }
+.ai-tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 10px 0; }
+.ai-tool { display: grid; gap: 2px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--ink-2); background: #fff; }
+.ai-tool b { color: var(--blue); font-size: 14px; }
+.ai-tool:hover { border-color: var(--blue); }
+.soon { display: flex; gap: 10px; align-items: center; background: linear-gradient(90deg, #f1ecff, #e9f1ff); border: 1px solid #ddd3ff; border-radius: 12px; padding: 12px 14px; font-size: 14px; color: #4b2fb3; }
+.soon b { white-space: nowrap; background: #6b4ce6; color: #fff; border-radius: 6px; padding: 2px 8px; font-size: 12px; }
+.channel-group { margin-bottom: 12px; }
+.channel-group p { margin: 0 0 6px; font-weight: 700; font-size: 14px; }
+.channel-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.channel-grid label { display: inline-flex !important; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 500 !important; cursor: pointer; background: #fff; }
+.channel-grid label:has(input:checked) { border-color: var(--blue); background: var(--blue-l); color: var(--blue-d); }
+.channel-grid input { width: auto !important; margin: 0 !important; display: inline-block !important; }
+.etc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.save-state { font-size: 13px; color: var(--ink-3); }
+.save-state.saving { color: var(--blue); }
+.fee-line { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.fee-line small { display: block; color: var(--ink-3); font-size: 12px; }
+.fee-line b { white-space: nowrap; }
+.partner-pick { display: grid; gap: 6px; }
+.phase-card { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; background: #fff; }
+.phase-card h3 { font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.phase-card .plan { color: var(--ink-2); font-size: 14px; margin: 6px 0; }
+.mini-phases { display: flex; gap: 4px; flex-wrap: wrap; }
+.mini-phases span { font-size: 11px; border-radius: 6px; padding: 1px 6px; background: #f0f1f5; color: var(--ink-3); }
+.mini-phases span.done { background: var(--green-l); color: var(--green); font-weight: 700; }
+.mini-phases span.on { background: var(--blue-l); color: var(--blue); font-weight: 700; }
+@media (max-width: 720px) { .opt-grid { grid-template-columns: 1fr 1fr; } .step-panel { padding: 16px; } }
+.form .opt input { display: none !important; }
+.form label.opt { display: grid; }

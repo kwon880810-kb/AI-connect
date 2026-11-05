@@ -11,6 +11,7 @@
 <script src="vendor/supabase.js"></script>
 <script src="js/config.js"></script>
 <script src="js/sb.js"></script>
+<script src="js/launch.js"></script>
 </head>
 <body class="rp-body">
 <header class="nav" id="nav"></header>
@@ -38,7 +39,7 @@
 
   // ======================= 의뢰 =======================
   let reqs = [], reqFilter = "action", curReq = null;
-  const needsAction = (r) => (r.status === "draft" && r.submitted_at) || ["open", "selecting", "disputed"].includes(r.status) || (r.status === "delivered" && new Date(r.verify_until) < new Date());
+  const needsAction = (r) => (r.status === "draft" && r.submitted_at) || ["open", "selecting", "disputed", "awaiting_deposit"].includes(r.status) || (r.status === "delivered" && new Date(r.verify_until) < new Date());
   async function tabReq() {
     const { data, error } = await sb.from("requests").select("*").order("created_at", { ascending: false });
     if (tab !== "req") return;
@@ -46,11 +47,11 @@
     reqs = data;
     const shown = reqs.filter((r) => reqFilter === "all" || (reqFilter === "action" ? needsAction(r) : reqStatus(r)[0] === reqFilter));
     $("#body").innerHTML = `
-      <div class="tabbar" id="rf">${[["action", "처리 필요"], ["all", "전체"], ["입금 대기", "입금 대기"], ["공급자 응답 받는 중", "응답 중"], ["리스트 전달 · 검증 중", "검증 중"], ["이의 처리 중", "이의"], ["확정", "확정"]]
+      <div class="tabbar" id="rf">${[["action", "처리 필요"], ["all", "전체"], ["입금 대기", "접수비 대기"], ["착수금 입금 대기", "착수금 대기"], ["공급자 응답 받는 중", "응답 중"], ["리스트 전달 · 검증 중", "검증 중"], ["이의 처리 중", "이의"], ["확정", "확정"]]
         .map(([k, l]) => `<button data-f="${k}" class="${reqFilter === k ? "on" : ""}">${l} ${reqs.filter((r) => k === "all" || (k === "action" ? needsAction(r) : reqStatus(r)[0] === k)).length}</button>`).join("")}</div>
       <div class="split"><div class="rows" id="rl">${shown.map((r) => `
         <button class="row-card ${curReq === r.id ? "on" : ""}" data-id="${r.id}"><div class="row-top">${badge(reqStatus(r))}<span class="muted">${esc(r.code || "작성 중")}</span><span class="right muted">${date(r.created_at)}</span></div>
-          <b>${esc(r.title)}</b><div class="row-meta"><span>${esc(cat.catName(r.major_id))}</span><span>${r.kind === "direct" ? "지정" : "일반"} · ${r.supplier_count}곳</span>${r.amount_total ? `<span>${won(r.amount_total)}</span>` : ""}</div></button>`).join("") || '<div class="panel muted">해당하는 의뢰가 없습니다.</div>'}</div>
+          <b>${esc(r.title)}</b><div class="row-meta">${r.stage ? `<span>${esc((LAUNCH.PHASES.find((p) => p.id === r.phase) || {}).label || "")} · ${esc(LAUNCH.STAGE_NAME[r.stage] || "")}</span>` : ""}<span>${esc(cat.catName(r.major_id))}</span><span>${r.fee_type === "followup" ? "기존 파트너 문의" : r.kind === "direct" ? "지정" : "일반"} · ${r.supplier_count}곳</span>${r.amount_total ? `<span>${won(r.amount_total)}</span>` : ""}</div></button>`).join("") || '<div class="panel muted">해당하는 의뢰가 없습니다.</div>'}</div>
         <div id="rd"><div class="panel muted">의뢰를 고르세요.</div></div></div>`;
     $("#rf").onclick = (e) => { const b = e.target.closest("[data-f]"); if (b) { reqFilter = b.dataset.f; tabReq(); } };
     $("#rl").onclick = (e) => { const b = e.target.closest("[data-id]"); if (b) { curReq = b.dataset.id; $$("#rl .row-card").forEach((x) => x.classList.toggle("on", x === b)); openReq(curReq); } };
@@ -76,6 +77,8 @@
     let html = `<div class="panel">
       <div class="row-top">${badge(reqStatus(r))}<span class="muted">${esc(r.code || "")}</span>${r.kind === "direct" ? '<span class="sbadge s-amber">지정 의뢰</span>' : ""}</div>
       <h2 style="margin-top:8px">${esc(r.title)}</h2>
+      ${r.context ? `<div class="note info" style="margin-bottom:10px"><b>출시 프로젝트</b> ${esc(r.context)}${r.stage ? ` · ${esc((LAUNCH.PHASES.find((p) => p.id === r.phase) || {}).label || "")} ${esc(LAUNCH.STAGE_NAME[r.stage] || "")}` : ""}</div>` : ""}
+      <p class="muted" style="margin:0 0 8px">요금: ${r.fee_type === "first" ? "첫 파트너 찾기" : r.fee_type === "continue" ? "이어하기" : r.fee_type === "followup" ? "기존 파트너 문의 (무료)" : "이전 방식"} · 접수 ${won(r.intake_amount ?? r.amount_total)}${r.deposit_amount ? ` · 착수금 ${won(r.deposit_amount)}${r.deposit_paid_at ? " (입금 확인)" : ""}` : ""}${r.coupon_id ? " · 쿠폰 사용" : ""}</p>
       <dl class="kv-grid">
         <div><dt>수요자</dt><dd>${esc(p.name || "")} ${p.company ? "· " + esc(p.company) : ""}</dd></div>
         <div><dt>연락처</dt><dd>${esc(p.phone || "-")}<br><span style="font-weight:400">${esc(p.email || "")}</span></dd></div>
@@ -91,13 +94,18 @@
       ${(files.data || []).length ? `<h3>첨부</h3><div class="files">${files.data.map((x) => `<div class="file-row"><a class="fname" href="#" data-file="${esc(x.path)}" style="text-decoration:underline">${esc(x.file_name)}</a><span class="sbadge ${x.visibility === "all" ? "s-blue" : "s-green"}">${x.visibility === "all" ? "모두 공개" : "선정사 공개"}</span></div>`).join("")}</div>` : ""}
     </div>`;
 
+    if (r.status === "awaiting_deposit") {
+      html += `<div class="panel"><h2>착수금 입금 확인</h2><p>착수금 <b>${won(r.deposit_amount)}</b> · 선정은 끝났고, 입금이 확인되면 수요자에게 업체명·연락처가 공개되고 7일 검증기간이 시작됩니다.</p>
+        <button class="btn btn-sm" id="confirmDeposit">착수금 입금 확인 → 연락처 공개</button></div>`;
+    }
     if (r.status === "draft" && r.submitted_at) {
-      html += `<div class="panel"><h2>입금 확인</h2><p>결제 금액 <b>${won(r.amount_total)}</b> · 접수 ${date(r.submitted_at, true)}</p>
+      html += `<div class="panel"><h2>${r.amount_total ? "접수비 입금 확인" : "공개 승인 (0원)"}</h2><p>${r.amount_total ? `접수 시 금액 <b>${won(r.amount_total)}</b>` : `<b>0원</b> · ${r.fee_type === "followup" ? "기존 파트너 문의" : "쿠폰 적용"}`} · 접수 ${date(r.submitted_at, true)}</p>
+        ${r.coupon_id ? '<p class="muted" style="margin:0 0 8px">쿠폰 의뢰입니다. 무료 기간에는 전화로 진지한 의뢰인지 확인한 뒤 공개해 주세요.</p>' : ""}
         <div class="row2"><label class="muted">결제 방법<input id="payPg" value="bank" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px"></label>
         <label class="muted">거래번호·입금자명<input id="payTid" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px"></label></div>
-        <button class="btn btn-sm" id="confirmPay" style="margin-top:10px">입금 확인 → 공급자에게 공개</button></div>`;
+        <button class="btn btn-sm" id="confirmPay" style="margin-top:10px">${r.amount_total ? "입금 확인 → 파트너에게 공개" : "확인 → 파트너에게 공개"}</button></div>`;
     }
-    if (["open", "selecting", "delivered", "disputed", "confirmed"].includes(r.status)) {
+    if (["open", "selecting", "awaiting_deposit", "delivered", "disputed", "confirmed"].includes(r.status)) {
       const rk = rank.data || [];
       const canSelect = ["open", "selecting"].includes(r.status);
       html += `<div class="panel"><h2>응답 순위 <span class="muted" style="font-weight:400;font-size:14px">필수 ✕ 업체는 아래로 · 적합도 70% + 신뢰도 30%</span></h2>
@@ -138,6 +146,7 @@
 
     d.querySelectorAll("[data-file]").forEach((a) => (a.onclick = async (e) => { e.preventDefault(); const u = await signedUrl(a.dataset.file); if (u) window.open(u, "_blank"); }));
     const on = (sel, fn) => { const el = d.querySelector(sel); if (el) el.onclick = fn; };
+    on("#confirmDeposit", async () => { if (await call(sb.rpc("admin_confirm_deposit", { p_request: id }), "착수금을 확인하고 연락처를 공개했습니다")) tabReq(); });
     on("#confirmPay", async () => { if (await call(sb.rpc("admin_confirm_payment", { p_request: id, p_pg: $("#payPg").value || "bank", p_tid: $("#payTid").value || null }), "입금 확인, 공급자에게 공개했습니다")) tabReq(); });
     on("#closeResp", async () => { if (await call(sb.from("requests").update({ status: "selecting" }).eq("id", id), "응답을 마감했습니다")) tabReq(); });
     on("#deliverBtn", async () => {

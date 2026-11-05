@@ -43,7 +43,7 @@ do $$ begin
 exception when others then if sqlerrm = 'SHOULD_FAIL' then raise exception 'FAIL: 수요자가 결제 없이 공개로 바꿈'; end if; end $$;
 select t((select status from requests where id = '11111111-1111-1111-1111-111111111111') = 'draft', '수요자는 결제 없이 상태를 바꿀 수 없음');
 select t(quote_amount('open', 3, array(select item_id from request_items)) = 50000 + 20000 + 5000, '일반 의뢰 금액: 착수금 + 업체 1곳 추가 + 조건값 1개');
-select t(quote_amount('direct', 2, array(select item_id from request_items)) = 25000 + 5000, '지정 의뢰 금액: 착수금 절반 + 조건값 그대로');
+select t(quote_amount('direct', 2, array(select item_id from request_items)) = 50000 + 5000, '지정 의뢰 금액: 일반 의뢰와 같음 (할인 폐지)');
 reset role;
 
 -- 결제 완료 처리 (서버)

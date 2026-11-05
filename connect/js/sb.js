@@ -14,7 +14,7 @@
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
   const STATUS = {
-    draft: ["작성 중", "s-gray"], submitted: ["입금 대기", "s-amber"], open: ["공급자 응답 받는 중", "s-blue"], selecting: ["업체 선정 중", "s-blue"],
+    draft: ["작성 중", "s-gray"], submitted: ["입금 대기", "s-amber"], open: ["공급자 응답 받는 중", "s-blue"], selecting: ["업체 선정 중", "s-blue"], awaiting_deposit: ["착수금 입금 대기", "s-amber"],
     delivered: ["리스트 전달 · 검증 중", "s-green"], disputed: ["이의 처리 중", "s-red"], confirmed: ["확정", "s-green"], cancelled: ["취소", "s-gray"],
   };
   const reqStatus = (r) => (r.status === "draft" && r.submitted_at ? STATUS.submitted : STATUS[r.status] || [r.status, "s-gray"]);

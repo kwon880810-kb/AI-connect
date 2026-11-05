@@ -28,13 +28,15 @@ const OUT = (process.argv[5] || require("path").join(__dirname, "..", "..", "scr
   await m.goto(B + "/index.html"); await m.waitForSelector(".count-card"); await snap(m, "04_홈_모바일.png");
 
   const d = await as(DEM, 1280, 860);
-  await d.goto(B + "/request.html"); await d.waitForSelector("#reqForm");
-  await d.fill("#reqForm [name=title]", "우리 강아지 얼굴 모양 져키"); await d.waitForSelector("#suggest [data-id]"); await d.click("#suggest [data-id] >> nth=0");
-  await d.fill("#reqForm [name=qty_min]", "500"); await d.fill("#reqForm [name=qty_max]", "1000"); await d.fill("#reqForm [name=due_min]", "28"); await d.fill("#reqForm [name=due_max]", "42");
-  await d.check("#condList .check-row:has(.tag-rec) input");
+  await d.goto(B + "/request.html");
+  await d.waitForSelector('[data-k="title"]');
+  await d.fill('[data-k="title"]', "우리 강아지 얼굴 모양 져키"); await d.waitForSelector("#suggest [data-sug]"); await d.click("#suggest [data-sug] >> nth=0");
+  await d.click('.opt:has(input[name="opt2"][value="oem"])'); await d.waitForSelector('[data-k="steps.2.src.qty_min"]');
+  await d.fill('[data-k="steps.2.src.qty_min"]', "500"); await d.fill('[data-k="steps.2.src.qty_max"]', "1000");
+  await d.fill('[data-k="steps.2.src.due_min"]', "28"); await d.fill('[data-k="steps.2.src.due_max"]', "42");
   await snap(d, "05_아이디어_의뢰하기.png");
-  await d.goto(B + "/projects.html"); await d.waitForSelector(".row-card");
-  await d.click('.row-card:has-text("져키")'); await d.waitForSelector(".rp-card"); await snap(d, "06_내_프로젝트_파트너리스트.png");
+  await d.goto(B + "/projects.html");
+  await d.waitForSelector(".phase-card"); await d.click('.row-card:has-text("강아지 얼굴 져키")'); await d.waitForTimeout(800); await d.click("[data-req] >> nth=0"); await d.waitForSelector(".rp-card"); await snap(d, "06_내_프로젝트_파트너리스트.png");
 
   const s = await as(SUP, 1280, 860);
   await s.waitForSelector("#feedList [data-rid]"); await s.click("#feedList [data-rid] >> nth=0"); await s.waitForSelector("#respForm");
@@ -42,6 +44,6 @@ const OUT = (process.argv[5] || require("path").join(__dirname, "..", "..", "scr
 
   const a = await as("admin@test.kr", 1280, 860);
   await a.waitForSelector("#rf"); await a.click('#rf [data-f="all"]'); await a.waitForSelector("#rl .row-card");
-  await a.click('#rl .row-card:has-text("져키")'); await a.waitForSelector("text=응답 순위"); await snap(a, "08_관리자_의뢰.png");
+  await a.click('#rl .row-card:has-text("강아지 얼굴 져키") >> nth=0'); await a.waitForSelector("text=응답 순위"); await snap(a, "08_관리자_의뢰.png");
   await br.close();
 })();
