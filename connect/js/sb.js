@@ -62,7 +62,7 @@
     const m = await loadMe();
     if (!m.user) { location.href = "login.html?next=" + encodeURIComponent(location.pathname.split("/").pop() + location.search); return null; }
     if (roles && (!m.profile || !roles.includes(m.profile.role))) {
-      document.querySelector("main").innerHTML = `<div class="wrap empty-page"><h1>이 화면을 볼 수 없습니다</h1><p>${roles.includes("admin") ? "관리자" : roles.includes("supplier") ? "공급자 회원" : "수요자 회원"} 전용 화면입니다.</p><a class="btn" href="index.html">홈으로</a></div>`;
+      document.querySelector("main").innerHTML = `<div class="wrap empty-page"><h1>이 화면을 볼 수 없습니다</h1><p>${roles.includes("admin") ? "관리자" : roles.includes("supplier") ? "제작 파트너(공급자) 회원" : "아이디어 의뢰자(수요자) 회원"} 전용 화면입니다.</p><a class="btn" href="index.html">홈으로</a></div>`;
       return null;
     }
     return m;
@@ -75,16 +75,16 @@
     const m = await loadMe();
     const role = m.profile && m.profile.role;
     const links = [
-      ["directory.html", "공급사 둘러보기"],
+      ["directory.html", "제작 파트너 둘러보기"],
       ["index.html#fee", "이용 요금"],
     ];
-    if (role === "supplier") links.push(["supplier.html", "공급자 센터"]);
-    else links.push(["request.html", "의뢰하기"]);
+    if (role === "supplier") links.push(["supplier.html", "파트너 센터"]);
+    else links.push(["request.html", "아이디어 의뢰"]);
     if (role === "demander" || role === "admin") links.push(["projects.html", "내 프로젝트"]);
     if (role === "admin") links.push(["admin.html", "관리자"]);
     nav.innerHTML = `
       <div class="wrap nav-in">
-        <a href="index.html" class="logo"><span class="logo-mark">W</span><span>${esc(S.brand)}</span></a>
+        <a href="index.html" class="logo"><span class="logo-mark">W</span><span>${esc(S.brand)}</span>${S.tagline ? `<small class="logo-tag">${esc(S.tagline)}</small>` : ""}</a>
         <nav class="menu" id="menu">${links.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</nav>
         ${m.user
           ? `<span class="nav-user">${esc(m.profile ? m.profile.name : m.user.email)}</span><button class="btn btn-sm btn-ghost" id="logoutBtn">로그아웃</button>`
@@ -103,7 +103,8 @@
     f.innerHTML = `
       <div class="wrap foot-in">
         <div>
-          <p class="logo"><span class="logo-mark">W</span><span>${esc(S.brand)}</span></p>
+          <p class="logo"><span class="logo-mark">W</span><span>${esc(S.brand)}</span>${S.tagline ? `<small class="logo-tag">${esc(S.tagline)}</small>` : ""}</p>
+          ${S.slogan ? `<p class="foot-sub">${esc(S.slogan)}</p>` : ""}
           <p class="foot-sub">운영 ${esc(S.operator)} · ${esc(S.address)}</p>
           <p class="foot-sub">${esc(biz)}</p>
           <p class="foot-sub"><a href="terms.html"><b>이용약관</b></a> · <a href="privacy.html"><b>개인정보처리방침</b></a></p>

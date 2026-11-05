@@ -31,8 +31,8 @@
     <form class="form" id="signupForm" novalidate hidden>
       <h2 style="margin:0">회원가입</h2>
       <div class="role-pick">
-        <label><input type="radio" name="role" value="demander" checked>수요자<small>만들 곳을 찾고 있어요</small></label>
-        <label><input type="radio" name="role" value="supplier">공급자<small>만들 수 있는 공장·업체예요 (무료)</small></label>
+        <label><input type="radio" name="role" value="demander" checked>아이디어 의뢰자<small>만들고 싶은 아이디어가 있어요</small></label>
+        <label><input type="radio" name="role" value="supplier">제작 파트너<small>아이디어를 실물로 만들 수 있어요 (무료)</small></label>
       </div>
       <label>이름 <i>*</i><input name="name" required autocomplete="name"></label>
       <label>회사·브랜드명<input name="company" autocomplete="organization"></label>
@@ -40,7 +40,7 @@
       <label>이메일 <i>*</i><input name="email" type="email" required autocomplete="email"></label>
       <label>비밀번호 <i>*</i> <span class="hint">8자 이상</span><input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
       <label class="check"><input type="checkbox" name="agree" required><span><a href="terms.html" target="_blank" style="text-decoration:underline">이용약관</a>과 <a href="privacy.html" target="_blank" style="text-decoration:underline">개인정보처리방침</a>에 동의합니다. <i>*</i></span></label>
-      <p class="muted" id="supplierNote" hidden>공급자는 가입 후 사업자등록번호 확인을 거쳐야 의뢰를 볼 수 있습니다.</p>
+      <p class="muted" id="supplierNote" hidden>제작 파트너는 가입 후 사업자등록번호 확인을 거쳐야 아이디어 의뢰를 볼 수 있습니다. 가입·응답·거래 수수료는 모두 무료입니다.</p>
       <button class="btn btn-block" type="submit">가입하기</button>
       <p class="form-msg" role="status"></p>
     </form>

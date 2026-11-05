@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>의뢰하기 | 윈-윈 커넥트</title>
+<title>아이디어 의뢰하기 | 윈-윈 커넥트</title>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="css/style.css">
@@ -19,21 +19,21 @@
 <template id="tpl">
   <div class="page-head">
     <div>
-      <h1 id="pageTitle">제작 의뢰하기</h1>
-      <p id="pageSub">조건을 적어 주시면 공장들이 항목마다 가능 여부를 답합니다. 의뢰자 정보는 공급자에게 공개되지 않습니다.</p>
+      <h1 id="pageTitle">아이디어 의뢰하기</h1>
+      <p id="pageSub">만들고 싶은 것을 적어 주세요. 제작 파트너들이 항목마다 가능 여부를 답합니다. 의뢰자 정보는 제작 파트너에게 공개되지 않습니다.</p>
     </div>
   </div>
   <div class="note info" id="directBox" hidden></div>
   <div class="split" style="grid-template-columns:minmax(0,1fr) 320px">
     <form class="form" id="reqForm" novalidate style="gap:22px">
       <section>
-        <label>만들고 싶은 것 <i>*</i><input name="title" required maxlength="80" placeholder="예: 강아지 져키 파우치, 화장품 단상자"></label>
+        <label>어떤 아이디어인가요? <i>*</i> <span class="hint">만들고 싶은 것을 한 줄로</span><input name="title" required maxlength="80" placeholder="예: 우리 강아지 얼굴 모양 져키, 팬 굿즈 키링, 브랜드 단상자"></label>
         <div class="chips" id="suggest" style="margin-top:8px"></div>
       </section>
 
       <section class="row2">
         <label>분야 <i>*</i><select name="major" required></select></label>
-        <label>품목 (중분류) <span class="hint">선택, 무료 · 고르지 않으면 분야 전체 공급자에게 공개</span><select name="minor"><option value="">전체</option></select></label>
+        <label>품목 (중분류) <span class="hint">선택, 무료 · 고르지 않으면 분야 전체 제작 파트너에게 공개</span><select name="minor"><option value="">전체</option></select></label>
       </section>
       <div class="note" id="confusion" hidden></div>
 
@@ -64,14 +64,14 @@
       </section>
 
       <section>
-        <label>자세한 내용<textarea name="description" rows="5" maxlength="3000" placeholder="규격, 재질, 참고 제품, 지금 거래처의 문제점 등. 회사명·연락처는 적지 마세요 (공급자에게 보입니다)."></textarea></label>
+        <label>자세한 내용<textarea name="description" rows="5" maxlength="3000" placeholder="규격, 재질, 참고 제품, 지금 거래처의 문제점 등. 회사명·연락처는 적지 마세요 (제작 파트너에게 보입니다)."></textarea></label>
       </section>
 
       <section>
         <p class="qb-title" style="margin-bottom:6px">첨부 파일 <span class="hint">참고 이미지, 도면, 디자인 (파일당 10MB까지)</span></p>
         <div class="files" id="fileList"></div>
         <label class="btn btn-sm btn-ghost" style="margin-top:8px;width:fit-content;cursor:pointer">파일 추가<input type="file" id="fileInput" multiple hidden></label>
-        <p class="muted" style="margin:6px 0 0">파일마다 공개 범위를 고르세요. <b>모두 공개</b>는 의뢰를 보는 공급자 전체, <b>선정된 업체만</b>은 리스트에 오른 업체만 봅니다. 목록에는 '모두 공개' 이미지 1장이 썸네일로 보입니다. 로고나 회사명이 보이는 파일은 '선정된 업체만'을 권합니다.</p>
+        <p class="muted" style="margin:6px 0 0">파일마다 공개 범위를 고르세요. <b>모두 공개</b>는 의뢰를 보는 제작 파트너 전체, <b>선정된 업체만</b>은 리스트에 오른 업체만 봅니다. 목록에는 '모두 공개' 이미지 1장이 썸네일로 보입니다. 로고나 회사명이 보이는 파일은 '선정된 업체만'을 권합니다.</p>
       </section>
 
       <label class="check"><input type="checkbox" name="agree" required><span><a href="terms.html" target="_blank" style="text-decoration:underline">이용약관과 환불 기준</a>에 동의합니다. <i>*</i></span></label>
@@ -81,8 +81,8 @@
     <aside class="panel sum-box">
       <h2>예상 금액</h2>
       <div id="sum"></div>
-      <button class="btn btn-block" id="submitBtn" style="margin-top:14px">의뢰 접수하기</button>
-      <p class="muted" style="margin:10px 0 0">접수 후 입금이 확인되면 공급자에게 공개됩니다. 업체를 찾지 못하면 그만큼 환불합니다.</p>
+      <button class="btn btn-block" id="submitBtn" style="margin-top:14px">아이디어 의뢰 접수하기</button>
+      <p class="muted" style="margin:10px 0 0">접수 후 입금이 확인되면 제작 파트너에게 공개됩니다. 업체를 찾지 못하면 그만큼 환불합니다.</p>
     </aside>
   </div>
 </template>
@@ -103,15 +103,15 @@
   const targets = (q.get("direct") || "").split(",").filter((x) => /^[0-9a-f-]{36}$/.test(x));
   const kind = targets.length ? "direct" : "open";
   if (kind === "direct") {
-    $("#pageTitle").textContent = "지정 의뢰하기";
+    $("#pageTitle").textContent = "골라 둔 파트너에게 아이디어 의뢰하기";
     const { data } = await sb.rpc("supplier_directory");
     const picked = (data || []).filter((d) => targets.includes(d.supplier_key));
     $("#directBox").hidden = false;
-    $("#directBox").innerHTML = `<b>지정 의뢰</b> · 둘러보기에서 고른 공급사 ${picked.length}곳에만 보냅니다 (착수금 절반).
-      <div class="chips" style="margin-top:6px">${picked.map((p, i) => `<span class="chip">공급사 ${i + 1} · ${esc(p.region_sido || "지역 미입력")} · ${esc((p.categories || []).join(", "))}</span>`).join("")}</div>
+    $("#directBox").innerHTML = `<b>지정 의뢰</b> · 둘러보기에서 고른 파트너 ${picked.length}곳에만 보냅니다 (착수금 절반).
+      <div class="chips" style="margin-top:6px">${picked.map((p, i) => `<span class="chip">파트너 ${i + 1} · ${esc(p.region_sido || "지역 미입력")} · ${esc((p.categories || []).join(", "))}</span>`).join("")}</div>
       <p class="muted" style="margin:6px 0 0">48시간 안에 응답하지 않거나 필수 항목이 맞지 않는 업체는 그만큼 환불합니다. <a href="directory.html" style="text-decoration:underline">다시 고르기</a></p>`;
     $("#countBox").hidden = true;
-    if (!picked.length) { $("#directBox").innerHTML = '지정한 공급사를 찾을 수 없습니다. <a href="directory.html">공급사 둘러보기</a>에서 다시 골라 주세요.'; }
+    if (!picked.length) { $("#directBox").innerHTML = '지정한 파트너를 찾을 수 없습니다. <a href="directory.html">제작 파트너 둘러보기</a>에서 다시 골라 주세요.'; }
   }
 
   // ---------- 분류 ----------
@@ -238,7 +238,7 @@
         <div class="empty-page">
           <h1>의뢰가 접수되었습니다</h1>
           <p>의뢰번호 <b>${esc(sub.data.code)}</b> · 결제 금액 <b>${won(sub.data.amount_total)}</b></p>
-          <div class="note info" style="max-width:520px;margin:0 auto 20px;text-align:left">${esc(S.bankInfo)}<br>입금이 확인되면 공급자에게 공개되고 48시간 동안 응답을 받습니다. 진행 상황은 '내 프로젝트'에서 볼 수 있습니다.</div>
+          <div class="note info" style="max-width:520px;margin:0 auto 20px;text-align:left">${esc(S.bankInfo)}<br>입금이 확인되면 제작 파트너에게 공개되고 48시간 동안 응답을 받습니다. 진행 상황은 '내 프로젝트'에서 볼 수 있습니다.</div>
           <a class="btn" href="projects.html?id=${reqId}">내 프로젝트로 가기</a>
         </div>`;
     } catch (e) {

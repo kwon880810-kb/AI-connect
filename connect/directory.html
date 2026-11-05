@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>공급사 둘러보기 | 윈-윈 커넥트</title>
+<title>제작 파트너 둘러보기 | 윈-윈 커넥트</title>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="css/style.css">
@@ -16,14 +16,14 @@
 <main class="page">
   <div class="wrap">
     <div class="page-head">
-      <div><h1>공급사 둘러보기</h1><p>사업자 확인을 마친 공급사입니다. 업체명과 연락처는 의뢰 후 선정되면 공개됩니다.</p></div>
+      <div><h1>제작 파트너 둘러보기</h1><p>사업자 확인을 마친 제작 파트너입니다. 내 아이디어를 만들어 줄 곳을 직접 골라 보세요. 업체명과 연락처는 의뢰 후 선정되면 공개됩니다.</p></div>
     </div>
     <div class="tabbar" id="filters"></div>
     <div class="dir-grid" id="grid"><p class="muted">불러오는 중…</p></div>
     <div class="dir-bar" id="bar" hidden>
       <span id="barText"></span>
       <button class="btn btn-sm btn-ghost" id="clearBtn" style="background:transparent;color:#fff;box-shadow:inset 0 0 0 1.5px #fff">비우기</button>
-      <a class="btn btn-sm" id="directBtn" href="#">찜한 공급사에 지정 의뢰 (착수금 절반)</a>
+      <a class="btn btn-sm" id="directBtn" href="#">찜한 파트너에게 지정 의뢰 (착수금 절반)</a>
     </div>
   </div>
 </main>
@@ -52,7 +52,7 @@
     $("#grid").innerHTML = shown.length ? shown.map((s, i) => {
       const on = picks.includes(s.supplier_key);
       return `<div class="dir-card ${on ? "on" : ""}">
-        <div class="row-top"><span class="dir-name">공급사 #${list.indexOf(s) + 1}</span><span class="right chip">${esc(s.region_sido || "지역 미입력")}</span></div>
+        <div class="row-top"><span class="dir-name">파트너 #${list.indexOf(s) + 1}</span><span class="right chip">${esc(s.region_sido || "지역 미입력")}</span></div>
         <div class="chips">${(s.categories || []).map((c) => `<span class="chip">${esc(c)}</span>`).join("")}</div>
         ${s.intro ? `<p style="margin:0;font-size:14px;color:var(--ink-2);white-space:pre-wrap">${esc(s.intro)}</p>` : ""}
         ${(s.processes || []).length ? `<p class="muted" style="margin:0">공정: ${esc(s.processes.slice(0, 8).join(", "))}${s.processes.length > 8 ? " 외" : ""}</p>` : ""}
@@ -60,9 +60,9 @@
         <div class="row-top"><span class="muted">응답 ${num(s.response_count)}건</span>
           <button class="btn btn-sm ${on ? "" : "btn-ghost"} right" data-pick="${s.supplier_key}">${on ? "찜함 ✓" : "찜하기"}</button></div>
       </div>`;
-    }).join("") : '<div class="panel">아직 등록된 공급사가 없습니다. 일반 의뢰를 하시면 브로커가 직접 찾아 드립니다.</div>';
+    }).join("") : '<div class="panel">아직 등록된 제작 파트너가 없습니다. 일반 의뢰를 하시면 브로커가 직접 찾아 드립니다.</div>';
     $("#bar").hidden = !picks.length;
-    $("#barText").textContent = `찜한 공급사 ${picks.length}곳`;
+    $("#barText").textContent = `찜한 파트너 ${picks.length}곳`;
     $("#directBtn").href = "request.html?direct=" + picks.join(",");
   }
   $("#filters").onclick = (e) => {

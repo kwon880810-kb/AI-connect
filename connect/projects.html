@@ -16,7 +16,7 @@
 <main class="page">
   <div class="wrap">
     <div class="page-head">
-      <div><h1>내 프로젝트</h1><p>의뢰 진행 상황, 공급자 리스트, 이의신청을 여기서 봅니다.</p></div>
+      <div><h1>내 프로젝트</h1><p>의뢰 진행 상황, 제작 파트너 리스트, 이의신청을 여기서 봅니다.</p></div>
       <a class="btn btn-sm" href="request.html">새 의뢰</a>
     </div>
     <div class="split">
@@ -34,7 +34,7 @@
   if (!me) return;
   const cat = await catalog();
   let reqs = [], current = null;
-  const DISPUTE = { open: "접수", awaiting_opinion: "공급자 의견 대기", accepted: "인정", rejected: "불인정" };
+  const DISPUTE = { open: "접수", awaiting_opinion: "파트너 의견 대기", accepted: "인정", rejected: "불인정" };
   const KIND = { required: "필수 항목 불일치", condition: "추가 조건 불일치", no_contact: "연락 두절" };
 
   async function loadList() {
@@ -80,12 +80,12 @@
     if (r.status === "draft" && !r.submitted_at) {
       html += `<div class="panel"><h2>작성 중인 의뢰</h2><p class="muted">접수가 끝나지 않은 의뢰입니다. 지우고 다시 작성해 주세요.</p><button class="btn btn-sm btn-ghost" id="delDraft">지우기</button></div>`;
     } else if (r.status === "draft") {
-      html += `<div class="panel"><h2>입금 대기</h2><p>결제 금액 <b>${won(r.amount_total)}</b></p><div class="note info">${esc(S.bankInfo)} 입금이 확인되면 공급자에게 공개됩니다.</div></div>`;
+      html += `<div class="panel"><h2>입금 대기</h2><p>결제 금액 <b>${won(r.amount_total)}</b></p><div class="note info">${esc(S.bankInfo)} 입금이 확인되면 제작 파트너에게 공개됩니다.</div></div>`;
     }
     if (["open", "selecting"].includes(r.status)) {
       const st = await sb.rpc("request_stats", { p_request: id });
       const s = (st.data || [])[0] || { views: 0, responses: 0, response_rate: 0 };
-      html += `<div class="panel"><h2>공급자 응답 현황</h2>
+      html += `<div class="panel"><h2>제작 파트너 응답 현황</h2>
         <div class="stats">열람 <b>${num(s.views)}</b> / 응답 <b>${num(s.responses)}</b> · 응답률 <b>${num(s.response_rate)}%</b></div>
         <p class="muted" style="margin:8px 0 0">응답 마감 ${date(r.respond_until, true)} · 응답 내용은 리스트를 전달할 때 함께 보여 드립니다.</p></div>`;
     }
@@ -121,7 +121,7 @@
     const itemLabel = (iid) => (cat.items.find((x) => x.id === iid) || {}).label || "";
     const left = r.verify_until ? Math.ceil((new Date(r.verify_until) - Date.now()) / 86400000) : 0;
     const canDispute = ["delivered", "disputed"].includes(r.status) && left > 0;
-    let html = `<div class="panel"><h2>공급자 리스트</h2>
+    let html = `<div class="panel"><h2>제작 파트너 리스트</h2>
       <p class="muted" style="margin:0 0 12px">리스트 전달일 ${date(r.delivered_at)} · ${r.status === "confirmed" ? "확정됨" : canDispute ? `검증기간 <b>${left}일</b> 남음 (${date(r.verify_until)}까지)` : "검증기간 종료"}</p>
       <div class="note info" style="margin-bottom:12px">업체에 연락하실 때 "${esc(S.brand)} 보고 연락드립니다, 의뢰번호 ${esc(r.code)}"라고 말씀해 주세요.</div>`;
     html += (resp || []).sort((a, b) => (b.fit_pct || 0) - (a.fit_pct || 0)).map((x, i) => {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>공급자 센터 | 윈-윈 커넥트</title>
+<title>제작 파트너 센터 | 윈-윈 커넥트</title>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="css/style.css">
@@ -45,7 +45,7 @@
     const s = existing || { company_name: me.profile.company || "", contact_name: me.profile.name, contact_phone: me.profile.phone, contact_email: me.user.email };
     return `
       <form class="form" id="supForm" novalidate>
-        <h2 style="margin:0">${existing ? "내 정보" : "공급자 정보 입력"}</h2>
+        <h2 style="margin:0">${existing ? "내 정보" : "제작 파트너 정보 입력"}</h2>
         ${existing ? "" : '<p class="muted" style="margin:0">사업자등록번호를 확인한 뒤 의뢰를 볼 수 있습니다. 업체명과 연락처는 선정된 의뢰의 수요자에게만 공개됩니다.</p>'}
         <div class="row2">
           <label>업체명 <i>*</i><input name="company_name" required value="${esc(s.company_name)}"></label>
@@ -116,9 +116,9 @@
       return bindProfileForm(true);
     }
     root.innerHTML = `
-      <div class="page-head"><div><h1>공급자 센터</h1><p>${esc(me.supplier.company_name)} · 가입·응답 모두 무료, 거래 수수료 없음</p></div></div>
+      <div class="page-head"><div><h1>제작 파트너 센터</h1><p>${esc(me.supplier.company_name)} · 아이디어를 실물로 만드는 곳 · 가입·응답·거래 수수료 모두 0원</p></div></div>
       <div class="tabbar" id="tabs">
-        <button data-t="feed">의뢰 목록</button><button data-t="mine">내 응답</button><button data-t="opinion">의견서 요청</button><button data-t="score">내 신뢰도</button><button data-t="info">내 정보</button>
+        <button data-t="feed">새 아이디어</button><button data-t="mine">내 응답</button><button data-t="opinion">의견서 요청</button><button data-t="score">내 신뢰도</button><button data-t="info">내 정보</button>
       </div>
       <div id="tabBody"></div>`;
     $("#tabs").onclick = (e) => { const b = e.target.closest("[data-t]"); if (b) { tab = b.dataset.t; showTab(); } };
@@ -146,7 +146,7 @@
   async function tabFeed() {
     const open = feed.filter((r) => r.status === "open" && (!onlyMine || matchesMine(r) || r.kind === "direct"));
     $("#tabBody").innerHTML = `
-      <label class="check" style="margin-bottom:12px"><input type="checkbox" id="onlyMine" ${onlyMine ? "checked" : ""}><span>내 분야 의뢰만 보기</span></label>
+      <label class="check" style="margin-bottom:12px"><input type="checkbox" id="onlyMine" ${onlyMine ? "checked" : ""}><span>내 분야 아이디어만 보기</span></label>
       <div class="split"><div class="rows" id="feedList">${open.length ? open.map((r) => {
         const mine = myResp.find((x) => x.request_id === r.id);
         return `<button class="row-card" data-rid="${r.id}"><div class="feed-card">
@@ -154,7 +154,7 @@
           <div class="body"><div class="row-top">${r.kind === "direct" ? '<span class="sbadge s-amber">지정 의뢰</span>' : ""}${mine ? badgeOf(mine.status) : ""}<span class="muted">${esc(r.code)}</span></div>
             <b>${esc(r.title)}</b>
             <div class="row-meta"><span>${esc(cat.catName(r.major_id))}${r.minor_id ? " › " + esc(cat.catName(r.minor_id)) : ""}</span><span>수량 ${range(r.qty_min, r.qty_max, "개")}</span><span>마감 ${date(r.respond_until, true)}</span></div></div>
-        </div></button>`; }).join("") : '<div class="panel muted">지금 응답할 수 있는 의뢰가 없습니다. 맞는 의뢰가 올라오면 알려 드리겠습니다.</div>'}</div>
+        </div></button>`; }).join("") : '<div class="panel muted">지금 응답할 수 있는 아이디어가 없습니다. 내 분야 아이디어가 올라오면 알려 드리겠습니다.</div>'}</div>
         <div id="feedDetail"><div class="panel muted">의뢰를 고르면 내용과 응답 양식이 보입니다.</div></div></div>`;
     $("#onlyMine").onchange = (e) => { onlyMine = e.target.checked; tabFeed(); };
     $("#feedList").onclick = (e) => { const b = e.target.closest("[data-rid]"); if (b) { $$("#feedList .row-card").forEach((x) => x.classList.toggle("on", x === b)); openRequest(b.dataset.rid); } };
@@ -212,7 +212,7 @@
               <span class="seg">${["O", "P", "X"].map((k) => `<button type="button" data-a="${k}" class="${{ O: "a-o", P: "a-p", X: "a-x" }[k]} ${a.value === k ? "on" : ""}">${{ O: "● 가능", P: "▲ 조건부", X: "✕ 불가" }[k]}</button>`).join("")}</span>
               <input type="text" data-note placeholder="메모" value="${esc(a.note || "")}"></div>`; }).join("")}
         </div>
-        <label>공장 메모 <span class="hint">수요자에게 보입니다</span><textarea name="memo" rows="3" maxlength="1000">${esc(v("memo"))}</textarea></label>
+        <label>공장 메모 <span class="hint">아이디어 의뢰자에게 보입니다</span><textarea name="memo" rows="3" maxlength="1000">${esc(v("memo"))}</textarea></label>
         <label class="check"><input type="checkbox" name="pledge" required ${resp && resp.license_pledge ? "checked" : ""}><span>이 품목을 만드는 데 법령상 필요한 인허가를 보유하고 있으며, 응답 내용이 사실과 다르면 신뢰도가 차감되는 것에 동의합니다. <i>*</i></span></label>
         ${editable ? `<button class="btn btn-s" type="submit">${resp && resp.status === "submitted" ? "응답 수정" : "응답 제출"}</button>` : ""}
         <p class="form-msg" role="status"></p>
