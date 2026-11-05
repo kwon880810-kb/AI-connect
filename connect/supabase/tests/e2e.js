@@ -287,10 +287,51 @@ function bizNo(prefix9) {
   await dem.waitForSelector('[data-act="close"]');
   ok(true, "여기서 마치기 → 다시 이어가기");
 
-  // ---------- 둘러보기 → 지정 의뢰 (새 프로젝트) ----------
+  // ---------- 관리자: 비회원사 CSV 등록 ----------
+  await adm.goto(`${BASE}/admin.html`);
+  await adm.waitForSelector("#rf");
+  await adm.click('#tabs [data-t="off"]');
+  await adm.waitForSelector("#offCsv", { state: "attached" });
+  const csv = "업체명,사업자번호,분류,공정,지역,소개,담당자,연락처,출처구분,출처명,수집일,활동확인일,공개\n" +
+    `비밀식품${stamp},${bizNo("31" + stamp + "1")},식품 OEM>과자·베이커리·떡,배합;포장,경기도,"소량 쿠키 OEM, 반려간식",김담당,031-111-2222,공공데이터,식약처 식품제조가공업 인허가,2026-11-05,2026.11.05,Y\n` +
+    `디자인스튜디오${stamp},,디자인,,서울,패키지 디자인,,010-0000-0000,인맥,,,,Y\n` +
+    `숨김공장${stamp},,없는분류,,부산,,,,,,,,N\n`;
+  await adm.setInputFiles("#offCsv", { name: "list.csv", mimeType: "text/csv", buffer: Buffer.from("﻿" + csv) });
+  await adm.waitForSelector("text=CSV 반영 결과");
+  const offTxt = await text(adm, "#body");
+  ok(offTxt.includes("추가 3") && offTxt.includes("모르는 분류 없는분류"), "관리자: 비회원사 CSV 3곳 추가, 모르는 분류 알림");
+  ok(offTxt.includes(`비밀식품${stamp}`) && offTxt.includes("비공개"), "관리자: 비회원사 목록 (업체명·비공개 상태)");
+  await shot(adm, "08_admin_offline.png");
+
+  // ---------- 둘러보기: 회원사 + 비회원사, 지정 의뢰 꺼짐 ----------
   await dem.goto(`${BASE}/directory.html`);
   await dem.waitForSelector(".dir-card");
-  ok(!(await text(dem, "#grid")).includes("가나펫푸드"), "둘러보기: 업체명 가림");
+  const dirTxt = await text(dem, "#grid");
+  ok(!dirTxt.includes("가나펫푸드") && !dirTxt.includes("비밀식품") && !dirTxt.includes("031-111-2222"), "둘러보기: 업체명·연락처 가림 (회원사·비회원사 모두)");
+  ok(dirTxt.includes("비회원사 · 공개 정보 기반") && dirTxt.includes("비회원사 · 운영사 네트워크") && dirTxt.includes("활동 확인"), "둘러보기: 비회원사 배지·출처·활동 확인 표시");
+  ok(dirTxt.includes("제조 공장") && dirTxt.includes("디자이너") && dirTxt.includes("소량 쿠키 OEM"), "둘러보기: 종류 배지(제조 공장·디자이너)와 소개");
+  ok(!dirTxt.includes("부산"), "둘러보기: 비공개 업체는 안 보임");
+  ok((await dem.$$("[data-pick]")).length === 0 && dirTxt.includes("지정 의뢰 준비 중"), "지정 의뢰 꺼짐: 찜하기 버튼 없음");
+  ok((await text(dem, "#counts")).includes("비회원사"), "둘러보기: 회원사·비회원사 수 표시");
+  await dem.click('#kinds button:has-text("디자이너")');
+  ok((await dem.$$(".dir-card")).length === 1, "둘러보기: 종류 필터");
+  await shot(dem, "07_directory.png");
+  await dem.goto(`${BASE}/request.html?direct=00000000-0000-0000-0000-000000000000`);
+  await dem.waitForSelector("text=지정 의뢰는 준비 중입니다");
+  ok(true, "지정 의뢰 꺼짐: 주소로 들어와도 일반 의뢰로 진행");
+
+  // 관리자가 요금 설정에서 지정 의뢰 켜기
+  await adm.click('#tabs [data-t="price"]');
+  await adm.waitForSelector('[data-k="direct_request_enabled"]');
+  await adm.fill('[data-k="direct_request_enabled"]', "1");
+  await adm.click('[data-save="direct_request_enabled"]');
+  await adm.waitForSelector("text=저장했습니다");
+
+  // ---------- 둘러보기 → 지정 의뢰 (새 프로젝트) ----------
+  await dem.goto(`${BASE}/directory.html`);
+  await dem.waitForSelector("[data-pick]");
+  const nonMemberPick = await dem.$$eval(".dir-card", (cs) => cs.filter((c) => c.textContent.includes("비회원사") && c.querySelector("[data-pick]")).length);
+  ok(nonMemberPick === 0, "지정 의뢰 켜짐: 비회원사는 찜할 수 없음");
   for (const c of await dem.$$(".dir-card")) if ((await c.textContent()).includes("충북")) await (await c.$("[data-pick]")).click();
   await dem.click("#directBtn");
   await dem.waitForSelector('[data-k="title"]');

@@ -13,6 +13,7 @@
 | `migrations/0006_status_deposit.sql` | 의뢰 상태 '착수금 입금 대기' 추가 |
 | `migrations/0007_projects.sql` | 출시 프로젝트(총 프로젝트·차수·단계), 접수비·착수금·이어하기·기존 파트너 문의 요금, 쿠폰, 착수금 전 미리보기 |
 | `migrations/0008_launch_categories.sql` | 디자인, 촬영·상세페이지, 표시사항·인증 대행, 물류 중분류 |
+| `migrations/0009_listed_suppliers.sql` | 비회원사 목록(공공데이터·운영사 네트워크): 출처·활동 확인·공개·제외 요청, 둘러보기에 함께 표시, 같은 사업자번호 가입 시 자동 연결, 지정 의뢰 켜고 끄기(`direct_request_enabled`, 기본 꺼짐) |
 | `tests/` | 로컬 PostgreSQL로 권한 규칙을 시험하는 파일 (실제 Supabase에는 넣지 않음) |
 
 ## 연결된 프로젝트 (2026-11-05 생성)
@@ -28,12 +29,12 @@
 
 ### Supabase 보안 점검(Advisor) 결과
 남은 경고는 모두 **의도한 것**입니다.
-- 비회원이 호출 가능: `public_request_counts`(분야별 건수), `supplier_directory`(가린 공급사 목록) → 공개하기로 한 기능
+- 비회원이 호출 가능: `public_request_counts`(분야별 건수), `supplier_directory`(가린 공급사 목록, 회원사+비회원사), `supplier_counts`(회원사·비회원사 수) → 공개하기로 한 기능
 - 회원이 호출 가능: 권한 규칙 계산용 도우미(`is_admin` 등, 본인 기준 참/거짓만 반환), `supplier_request_feed`, `request_stats`, `trust_score_of`(본인·관리자 외에는 빈 값), `rank_responses`(관리자 외에는 빈 결과), `submit_opinion`
 
 ## 새 프로젝트에 적용하기
 1. supabase.com에서 프로젝트 만들기 (리전: Seoul)
-2. SQL Editor에서 `0001` → `0008` 순서로 실행 (`0006`은 따로 실행)
+2. SQL Editor에서 `0001` → `0009` 순서로 실행 (`0006`은 따로 실행)
 3. 첫 관리자 지정: Authentication에서 대표님 계정으로 가입한 뒤 SQL Editor에서
    ```sql
    insert into profiles (id, role, name) values ('<대표님 user id>', 'admin', '권봉구');
@@ -45,7 +46,7 @@
 bash supabase/tests/run.sh
 ```
 
-**화면 전체 흐름 시험**: 로컬 PostgreSQL 위에서 Supabase를 흉내 내는 시험 서버(`tests/mock_supabase.py`)를 띄우고, Playwright로 출시 프로젝트 전체 흐름(1차 접수·착수금·이의신청·2차 기존 파트너 문의·판매 채널·지정 의뢰) 37개 항목을 확인합니다.
+**화면 전체 흐름 시험**: 로컬 PostgreSQL 위에서 Supabase를 흉내 내는 시험 서버(`tests/mock_supabase.py`)를 띄우고, Playwright로 출시 프로젝트 전체 흐름(1차 접수·착수금·이의신청·2차 기존 파트너 문의·판매 채널·비회원사 CSV 등록과 둘러보기·지정 의뢰 꺼짐/켜짐) 47개 항목을 확인합니다.
 ```bash
 bash supabase/tests/reset_app_db.sh
 ```
@@ -55,7 +56,7 @@ su postgres -c "python3 supabase/tests/mock_supabase.py --db wwc_app --port 8787
 ```bash
 node supabase/tests/e2e.js http://localhost:8787
 ```
-비회원, 미인증 공급자, 공급자, 수요자, 관리자로 바꿔 가며 70개 항목(권한 48 + 출시 프로젝트·요금·쿠폰 22)을 확인합니다. 예를 들면 이런 것들입니다.
+비회원, 미인증 공급자, 공급자, 수요자, 관리자로 바꿔 가며 79개 항목(권한 48 + 출시 프로젝트·요금·쿠폰 22 + 비회원사 9)을 확인합니다. 예를 들면 이런 것들입니다.
 - 공급자는 수요자 정보를 못 봄
 - 신뢰도는 본인과 관리자만 봄
 - 선정된 공급자의 연락처만 수요자에게 공개됨

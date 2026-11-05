@@ -4,6 +4,6 @@ set -e
 cd "$(dirname "$0")/.."
 PSQL="su postgres -c"
 $PSQL "psql -qc 'drop database if exists wwc_test' -c 'create database wwc_test'" >/dev/null
-for f in tests/00_supabase_stub.sql migrations/0001_init.sql migrations/0002_seed_categories.sql migrations/0003_hardening.sql migrations/0004_app.sql migrations/0006_status_deposit.sql migrations/0007_projects.sql migrations/0008_launch_categories.sql tests/01_grants.sql tests/10_rls_test.sql tests/20_project_test.sql; do
+for f in tests/00_supabase_stub.sql migrations/0001_init.sql migrations/0002_seed_categories.sql migrations/0003_hardening.sql migrations/0004_app.sql migrations/0006_status_deposit.sql migrations/0007_projects.sql migrations/0008_launch_categories.sql migrations/0009_listed_suppliers.sql tests/01_grants.sql tests/10_rls_test.sql tests/20_project_test.sql tests/30_listing_test.sql; do
   $PSQL "psql -v ON_ERROR_STOP=1 -q -d wwc_test -f $f"
 done

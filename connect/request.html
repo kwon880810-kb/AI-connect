@@ -34,6 +34,7 @@
   let cat;
   try { cat = await catalog(); } catch (e) { root.innerHTML = '<p class="muted">분류를 불러오지 못했습니다. 잠시 후 다시 시도하세요.</p>'; return; }
   const PRODUCT_MAJORS = cat.majors.filter((m) => m.id <= 7);
+  const DIRECT_ON = cat.pricing.direct_request_enabled === 1;
 
   // ---------------- 상태 ----------------
   const blank = () => ({ title: "", idea_mode: "text", idea_desc: "", product_major: null, product_minor: null, steps: {}, channels: [], etc: Array(L.ETC_COUNT).fill(""), phase: "1" });
@@ -56,7 +57,9 @@
   if (q.get("phase")) st.phase = q.get("phase");
   // 둘러보기에서 찜한 파트너에게 보내는 지정 의뢰 (2단계 제품 생산에 적용)
   const directIds = (q.get("direct") || "").split(",").filter((x) => /^[0-9a-f-]{36}$/.test(x));
-  if (directIds.length) { st.direct = directIds; st.phase = "1"; }
+  if (directIds.length && DIRECT_ON) { st.direct = directIds; st.phase = "1"; }
+  if (!DIRECT_ON && (st.direct || []).length) { st.direct = []; }
+  if (directIds.length && !DIRECT_ON) setTimeout(() => toast("지정 의뢰는 준비 중입니다. 일반 의뢰로 진행됩니다."), 300);
   if (!L.PHASES.some((p) => p.id === st.phase)) st.phase = "1";
 
   async function loadProjectFacts() {

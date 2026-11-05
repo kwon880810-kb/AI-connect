@@ -157,5 +157,10 @@
     b.after(pop);
   });
 
-  window.LAUNCH = { PHASES, STEPS, PACK_MINOR, AI_TOOLS, AI_NOTICE, certNotesFor, CHANNEL_GROUPS, ETC_COUNT, STAGE_NAME, phaseOfStep, optionOf, helpButton };
+  // 업체 종류 배지 (분류의 대분류 기준)
+  const KIND_BY_MAJOR = { 1: "제조 공장", 2: "제조 공장", 4: "제조 공장", 5: "제조 공장", 6: "제조 공장", 3: "인쇄·포장재", 7: "포장·조립", 8: "3PL", 9: "디자이너", 10: "촬영·상세페이지", 11: "인증 대행사" };
+  const KIND_ORDER = ["제조 공장", "인쇄·포장재", "디자이너", "촬영·상세페이지", "인증 대행사", "포장·조립", "3PL"];
+  const kindsOf = (categoryIds) => [...new Set((categoryIds || []).map((id) => KIND_BY_MAJOR[id]).filter(Boolean))];
+
+  window.LAUNCH = { KIND_BY_MAJOR, KIND_ORDER, kindsOf, PHASES, STEPS, PACK_MINOR, AI_TOOLS, AI_NOTICE, certNotesFor, CHANNEL_GROUPS, ETC_COUNT, STAGE_NAME, phaseOfStep, optionOf, helpButton };
 })();

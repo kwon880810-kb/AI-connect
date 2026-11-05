@@ -176,6 +176,7 @@ select t((select count(*) from requests) = 0 and (select count(*) from contracts
 reset role;
 
 \echo '--- 지정 의뢰'
+update pricing set value = 1 where key = 'direct_request_enabled';  -- 지정 의뢰 켠 상태로 시험
 set role authenticated; select from set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000d2', false);
 insert into requests (id, demander_id, kind, major_id, title, qty_min, qty_max) values ('44444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-0000000000d2', 'direct', 2, '고양이 스크래쳐', 300, 500);
 insert into request_targets values ('44444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-0000000000b2');
