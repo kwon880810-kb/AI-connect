@@ -53,7 +53,7 @@ update requests set status = 'open', paid_at = now(), amount_total = 55000, resp
 set role anon; select from set_config('request.jwt.claim.sub', '', false);
 select t((select count(*) from requests) = 0, '비회원은 의뢰를 볼 수 없음');
 do $$ begin
-  perform 1 from supplier_request_feed; raise exception 'SHOULD_FAIL';
+  perform 1 from supplier_request_feed(); raise exception 'SHOULD_FAIL';
 exception when others then if sqlerrm = 'SHOULD_FAIL' then raise exception 'FAIL: 비회원이 의뢰 피드에 접근함'; end if; end $$;
 select t(true, '비회원은 의뢰 피드 접근 자체가 거부됨');
 select t((select open_count from public_request_counts() where major_id = 2) = 1, '비회원도 분야별 진행 건수는 봄 (반려동물 1건)');
@@ -65,13 +65,13 @@ select string_agg(column_name, ', ') from (select unnest(array['supplier_key','r
 
 \echo '--- 미인증 공급자 B3'
 set role authenticated; select from set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b3', false);
-select t((select count(*) from supplier_request_feed) = 0, '사업자 확인 전 공급자는 의뢰를 못 봄');
+select t((select count(*) from supplier_request_feed()) = 0, '사업자 확인 전 공급자는 의뢰를 못 봄');
 reset role;
 
 \echo '--- 공급자 B1: 의뢰 보기와 응답'
 set role authenticated; select from set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b1', false);
-select t((select count(*) from supplier_request_feed) = 1, '인증 공급자는 의뢰 피드에서 의뢰를 봄');
-select t((select thumbnail_path from supplier_request_feed) = 'req/1/ref.jpg', '목록 썸네일은 모두 공개 이미지 1개');
+select t((select count(*) from supplier_request_feed()) = 1, '인증 공급자는 의뢰 피드에서 의뢰를 봄');
+select t((select thumbnail_path from supplier_request_feed()) = 'req/1/ref.jpg', '목록 썸네일은 모두 공개 이미지 1개');
 select t((select count(*) from requests) = 0, '공급자는 requests 원본(수요자 ID 포함)을 직접 못 봄');
 select t((select count(*) from profiles where id = '00000000-0000-0000-0000-0000000000d1') = 0, '공급자는 수요자 회원 정보를 못 봄');
 select t((select count(*) from request_files) = 1, '선정 전에는 모두 공개 파일만 보임');
@@ -181,10 +181,10 @@ insert into request_targets values ('44444444-4444-4444-4444-444444444444', '000
 reset role;
 update requests set status = 'open', paid_at = now() where id = '44444444-4444-4444-4444-444444444444';
 set role authenticated; select from set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b1', false);
-select t((select count(*) from supplier_request_feed where kind = 'direct') = 0, '지정되지 않은 공급자는 지정 의뢰를 못 봄');
+select t((select count(*) from supplier_request_feed() where kind = 'direct') = 0, '지정되지 않은 공급자는 지정 의뢰를 못 봄');
 reset role;
 set role authenticated; select from set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b2', false);
-select t((select count(*) from supplier_request_feed where kind = 'direct') = 1, '지정된 공급자는 지정 의뢰를 봄');
+select t((select count(*) from supplier_request_feed() where kind = 'direct') = 1, '지정된 공급자는 지정 의뢰를 봄');
 reset role;
 
 \echo '--- 신뢰도 점수'

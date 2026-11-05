@@ -7,11 +7,28 @@
 |---|---|
 | `migrations/0001_init.sql` | 테이블, 금액 계산, 범위 비교(●▲✕), 적합도 자동 계산, 권한 규칙(RLS) |
 | `migrations/0002_seed_categories.sql` | 카테고리표 1차안 (대분류 8, 중분류 30, 체크리스트 항목, 공정) |
+| `migrations/0003_hardening.sql` | 보안 점검 반영: 공급자 피드를 함수로, 비회원 호출 권한 정리, search_path 고정 |
 | `tests/` | 로컬 PostgreSQL로 권한 규칙을 시험하는 파일 (실제 Supabase에는 넣지 않음) |
 
-## Supabase에 적용하기
+## 연결된 프로젝트 (2026-11-05 생성)
+| 항목 | 값 |
+|---|---|
+| 프로젝트 | `winwin-connect` (조직 `winwin-connect`, 리전 서울 `ap-northeast-2`, 무료) |
+| Project URL | `https://ityavotmbqzatuhaygdg.supabase.co` |
+| 공개 키 (publishable) | `sb_publishable_1j6pGXO7xZyX-eeOoY965g_6KgXGnDd` |
+| 적용된 마이그레이션 | `init`, `seed_categories`, `hardening` (+ 트리거 함수 권한 회수) |
+
+공개 키는 홈페이지에 넣는 값이라 공개되어도 괜찮습니다. 데이터 보호는 권한 규칙(RLS)이 합니다.
+**service_role 키와 DB 비밀번호는 저장소나 채팅에 절대 넣지 마세요.**
+
+### Supabase 보안 점검(Advisor) 결과
+남은 경고는 모두 **의도한 것**입니다.
+- 비회원이 호출 가능: `public_request_counts`(분야별 건수), `supplier_directory`(가린 공급사 목록) → 공개하기로 한 기능
+- 회원이 호출 가능: 권한 규칙 계산용 도우미(`is_admin` 등, 본인 기준 참/거짓만 반환), `supplier_request_feed`, `request_stats`, `trust_score_of`(본인·관리자 외에는 빈 값), `rank_responses`(관리자 외에는 빈 결과), `submit_opinion`
+
+## 새 프로젝트에 적용하기
 1. supabase.com에서 프로젝트 만들기 (리전: Seoul)
-2. SQL Editor에서 `0001_init.sql` → `0002_seed_categories.sql` 순서로 실행
+2. SQL Editor에서 `0001_init.sql` → `0002_seed_categories.sql` → `0003_hardening.sql` 순서로 실행
 3. 첫 관리자 지정: Authentication에서 대표님 계정으로 가입한 뒤 SQL Editor에서
    ```sql
    insert into profiles (id, role, name) values ('<대표님 user id>', 'admin', '권봉구');
