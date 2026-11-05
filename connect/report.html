@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>공급자 리스트 | 윈-윈 커넥트</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/config.js"></script>
+<script src="js/report-view.js"></script>
+</head>
+<body class="rp-body">
+<header class="nav"><div class="wrap nav-in"><a href="index.html" class="logo"><span class="logo-mark">W</span><span data-site="brand">윈-윈 커넥트</span></a></div></header>
+<main class="rp wrap" id="rp"><p class="empty">불러오는 중…</p></main>
+
+<script>
+(function () {
+  const S = window.SITE;
+  const el = document.getElementById("rp");
+  document.querySelectorAll("[data-site]").forEach((n) => { if (S[n.dataset.site]) n.textContent = S[n.dataset.site]; });
+  const q = new URLSearchParams(location.search);
+  const fail = (t) => { el.innerHTML = `<div class="rp-msg"><h1>리스트를 열 수 없습니다</h1><p>${t}</p><p>문의 <a href="tel:${S.phone}">${S.phone}</a></p></div>`; };
+
+  // 예시 화면: report.html?demo=1 (연락처 공개 상태는 &reveal=1)
+  if (q.get("demo")) {
+    const demo = {
+      id: "R261105-001", item: "강아지 간식 파우치 소량 생산", cat: "소량 OEM·ODM 제조", qty: "1,000개", due: "6주 이내", date: "2026-11-05",
+      reveal: q.get("reveal") === "1",
+      questions: ["최소 주문 수량(MOQ)이 우리 수량에 맞나요?", "샘플을 먼저 만들 수 있나요? (비용·기간)", "희망 납기 안에 생산할 수 있나요?", "필요한 인증(HACCP, KC 등)이 있나요?", "완성품을 물류창고로 바로 보내 줄 수 있나요?"],
+      suppliers: [
+        { name: "가나식품(예시)", region: "경기 김포", person: "김 실장", phone: "010-0000-0000", price: "개당 약 650원", moq: "500개", due: "샘플 1주 + 본생산 4주",
+          answers: [{ a: "O", note: "500개부터" }, { a: "O", note: "샘플 5만 원, 1주" }, { a: "O" }, { a: "O", note: "HACCP 보유" }, { a: "P", note: "파주까지 화물 별도" }],
+          memo: "원료 직접 수급 가능, 파우치 디자인 파일은 의뢰자가 준비" },
+        { name: "다라푸드(예시)", region: "충북 음성", person: "이 팀장", phone: "010-0000-0000", price: "개당 약 580원", moq: "1,000개", due: "본생산 6주",
+          answers: [{ a: "O", note: "1,000개 딱 맞음" }, { a: "P", note: "샘플비 15만 원" }, { a: "P", note: "6주 꽉 참" }, { a: "O" }, { a: "X" }] },
+        { name: "마바펫(예시)", region: "경기 화성", person: "박 대표", phone: "010-0000-0000", moq: "3,000개",
+          answers: [{ a: "X", note: "3,000개부터" }, { a: "O" }, { a: "O" }, { a: "" }, { a: "O" }] },
+      ],
+    };
+    ReportView.render(el, demo, { example: true });
+    return;
+  }
+
+  const id = q.get("id"), k = q.get("k");
+  if (!id || !k) return fail("링크 주소가 올바르지 않습니다. 받으신 링크를 다시 눌러 주세요.");
+  if (!S.endpoint) return fail("아직 접수 시스템이 연결되지 않았습니다.");
+  const cb = "rp" + Date.now();
+  const s = document.createElement("script");
+  window[cb] = (res) => {
+    if (!res.ok) return fail(res.error === "notready" ? "공급자 리스트를 아직 준비하고 있습니다. 준비되면 다시 알려 드리겠습니다." : "리스트를 찾을 수 없습니다. 링크를 다시 확인해 주세요.");
+    document.title = res.item + " 공급자 리스트 | " + S.brand;
+    ReportView.render(el, res);
+  };
+  s.onerror = () => fail("잠시 후 다시 시도해 주세요.");
+  s.src = S.endpoint + "?action=report&id=" + encodeURIComponent(id) + "&k=" + encodeURIComponent(k) + "&callback=" + cb;
+  document.body.appendChild(s);
+})();
+</script>
+</body>
+</html>

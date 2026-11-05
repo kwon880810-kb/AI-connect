@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="css/style.css">
 <script src="js/config.js"></script>
+<script src="js/report-view.js"></script>
 <style>
   body { background: var(--bg-alt); }
   .adm { max-width: 1200px; margin: 0 auto; padding: 24px 16px 80px; }
@@ -23,21 +24,69 @@
   .card-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .card-top b { font-size: 17px; }
   .card-top .when { margin-left: auto; color: var(--ink-3); font-size: 13px; }
+  .rid { font-size: 12px; color: var(--ink-3); font-family: ui-monospace, monospace; }
   .kv { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--ink-2); font-size: 14px; }
   .kv span b { color: var(--ink); font-weight: 600; }
   .body { white-space: pre-wrap; background: var(--bg-alt); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin: 0; }
+  .qs { margin: 0; padding-left: 20px; font-size: 14px; color: var(--ink-2); }
   .ctl { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .ctl select, .ctl input { font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
   .ctl input { flex: 1; min-width: 180px; }
+  .rep-line { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--ink-2); background: var(--green-l); border-radius: 10px; padding: 8px 12px; }
+  .rep-line.draft { background: #fff3dc; }
   .st { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--blue-l); color: var(--blue); }
   .st-신규 { background: #ffe9e9; color: #d33; }
   .st-연결완료, .st-정산완료 { background: var(--green-l); color: var(--green); }
   .st-보류 { background: #eee; color: #777; }
   .empty { color: var(--ink-3); text-align: center; padding: 40px; }
   .note { color: var(--ink-3); font-size: 13px; }
+  .demo-bar { background: #fff3dc; color: #8a5300; text-align: center; padding: 8px; font-size: 14px; }
+
+  /* 리스트 편집기 */
+  .ed { position: fixed; inset: 0; background: var(--bg-alt); z-index: 50; overflow-y: auto; }
+  .ed-in { max-width: 980px; margin: 0 auto; padding: 20px 16px 120px; }
+  .ed-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .ed-top h2 { font-size: 20px; margin-right: auto; }
+  .box { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
+  .box h3 { font-size: 16px; margin: 0 0 10px; }
+  .eq { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .eq span { color: var(--ink-3); font-size: 13px; width: 22px; flex: none; }
+  .eq input, .sup-grid input, .ans-row input, .sup-grid textarea, .addsup select {
+    font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 0; width: 100%; }
+  .x { border: 0; background: none; color: var(--ink-3); cursor: pointer; font-size: 15px; flex: none; }
+  .x:hover { color: #d33; }
+  .sup { border-top: 4px solid var(--green); }
+  .sup-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .sup-head b { margin-right: auto; }
+  .sup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .sup-grid label { font-size: 12px; color: var(--ink-3); display: block; }
+  .sup-grid .wide { grid-column: 1 / -1; }
+  .ans-row { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; padding: 8px 0; border-top: 1px solid var(--line); align-items: center; }
+  .ans-row .q { font-size: 14px; }
+  .ans-row input { grid-column: 1 / -1; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { font: inherit; font-size: 13px; font-weight: 700; border: 0; background: #fff; padding: 5px 10px; cursor: pointer; color: var(--ink-3); border-left: 1px solid var(--line); }
+  .seg button:first-child { border-left: 0; }
+  .seg button.on.a-o { background: var(--green); color: #fff; }
+  .seg button.on.a-p { background: #e09100; color: #fff; }
+  .seg button.on.a-x { background: #d33; color: #fff; }
+  .seg button.on.a-n { background: var(--ink-3); color: #fff; }
+  .addsup { display: flex; gap: 8px; flex-wrap: wrap; }
+  .addsup select { flex: 1; min-width: 200px; width: auto; }
+  .ed-bar { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--line); z-index: 51; }
+  .ed-bar-in { max-width: 980px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .ed-bar label { display: flex; gap: 6px; align-items: center; font-size: 14px; margin-right: auto; }
+  .linkbox { display: none; }
+  .linkbox.show { display: block; }
+  .linkbox textarea { width: 100%; font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .preview { background: var(--bg-alt); border-radius: 14px; padding: 4px 0; }
+  .preview .rp-head h1 { font-size: 22px; }
+  @media (max-width: 720px) { .sup-grid { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
 <body>
+
+<div class="demo-bar" id="demoBar" hidden>예시 모드입니다. 저장해도 실제로 기록되지 않습니다.</div>
 
 <div class="login form" id="login">
   <h2>관리자 로그인</h2>
@@ -45,6 +94,7 @@
   <input id="token" type="password" placeholder="관리자 비밀번호">
   <button class="btn btn-block" id="loginBtn">들어가기</button>
   <p class="form-msg err" id="loginMsg"></p>
+  <p class="note"><a href="admin.html?demo=1" style="text-decoration:underline">예시 데이터로 둘러보기</a></p>
 </div>
 
 <div class="adm" id="app" hidden>
@@ -58,17 +108,65 @@
   <div class="cards" id="list"></div>
 </div>
 
+<div class="ed" id="ed" hidden>
+  <div class="ed-in">
+    <div class="ed-top">
+      <h2 id="edTitle">공급자 리스트 작성</h2>
+      <button class="btn btn-sm btn-ghost" id="edClose">닫기</button>
+    </div>
+    <div class="box">
+      <h3>질문 (수요자 요청서 기준, 추가·수정 가능)</h3>
+      <div id="edQs"></div>
+      <div class="addsup" style="margin-top:8px">
+        <input id="edQNew" placeholder="질문 추가" style="flex:1;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:7px 10px">
+        <button class="btn btn-sm" id="edQAdd">추가</button>
+      </div>
+    </div>
+    <div id="edSups"></div>
+    <div class="box">
+      <h3>공급자 추가</h3>
+      <div class="addsup">
+        <select id="edPick"><option value="">등록 공급사에서 고르기</option></select>
+        <button class="btn btn-sm btn-s" id="edAddPick">추가</button>
+        <button class="btn btn-sm btn-ghost" id="edAddBlank">직접 입력</button>
+      </div>
+    </div>
+    <div class="box linkbox" id="edLink">
+      <h3>수요자에게 보낼 메시지</h3>
+      <textarea id="edMsg" rows="4" readonly></textarea>
+      <div class="ctl" style="margin-top:8px">
+        <button class="btn btn-sm" id="edCopy">복사</button>
+        <a class="btn btn-sm btn-ghost" id="edOpen" target="_blank" rel="noopener">링크 열어 보기</a>
+      </div>
+    </div>
+    <div class="box" id="edPrevBox" hidden>
+      <h3>미리보기 (수요자 화면)</h3>
+      <div class="preview" id="edPrev"></div>
+    </div>
+  </div>
+  <div class="ed-bar"><div class="ed-bar-in">
+    <label><input type="checkbox" id="edReveal"> 연락처 공개 (연결비 확인됨)</label>
+    <button class="btn btn-sm btn-ghost" id="edPreview">미리보기</button>
+    <button class="btn btn-sm btn-ghost" id="edSave">임시 저장</button>
+    <button class="btn btn-sm" id="edPublish">저장하고 링크 만들기</button>
+  </div></div>
+</div>
+
 <script>
 (function () {
   const S = window.SITE;
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const parse = (s, d) => { try { return JSON.parse(s) || d; } catch (e) { return d; } };
+  const DEMO = new URLSearchParams(location.search).has("demo");
   let token = "", db = null, tab = "의뢰";
   try { token = localStorage.getItem("wwc_token") || ""; } catch (e) {}
 
-  if (!S.endpoint) { $("loginMsg").textContent = "js/config.js 의 endpoint 가 비어 있습니다. Apps Script를 먼저 연결하세요."; }
+  if (!S.endpoint && !DEMO) $("loginMsg").textContent = "js/config.js 의 endpoint 가 비어 있습니다. Apps Script를 먼저 연결하세요.";
 
+  // ---------- 서버 ----------
   function load() {
+    if (DEMO) return Promise.resolve(demoData());
     return new Promise((resolve, reject) => {
       const cb = "cb" + Date.now();
       const s = document.createElement("script");
@@ -78,15 +176,23 @@
       document.body.appendChild(s);
     });
   }
+  function post(body) {
+    if (DEMO) return Promise.resolve();
+    // Apps Script는 CORS 응답을 주지 않아 결과를 읽을 수 없습니다. 저장 후 새로고침으로 확인합니다.
+    return fetch(S.endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(Object.assign({ token }, body)) });
+  }
+  const reportUrl = (r) => new URL("report.html?id=" + encodeURIComponent(r["의뢰번호"]) + "&k=" + encodeURIComponent(r["리포트키"]), location.href).href;
 
   async function start() {
     try {
       const res = await load();
       if (!res.ok) throw new Error(res.error);
       db = res;
-      try { localStorage.setItem("wwc_token", token); } catch (e) {}
-      $("login").hidden = true; $("app").hidden = false;
-      $("filter").innerHTML = '<option value="">전체 상태</option>' + res.statuses.map((s) => `<option>${s}</option>`).join("");
+      if (!DEMO) try { localStorage.setItem("wwc_token", token); } catch (e) {}
+      $("login").hidden = true; $("app").hidden = false; $("demoBar").hidden = !DEMO;
+      const f = $("filter").value;
+      $("filter").innerHTML = '<option value="">전체 상태</option>' + res.statuses.map((s) => `<option ${s === f ? "selected" : ""}>${s}</option>`).join("");
       render();
     } catch (e) {
       $("login").hidden = false; $("app").hidden = true;
@@ -94,54 +200,214 @@
     }
   }
 
+  // ---------- 목록 ----------
   function render() {
     $("tabs").innerHTML = Object.keys(db.data).map((k) => {
       const n = db.data[k].filter((r) => r["상태"] === "신규").length;
       return `<button class="${k === tab ? "on" : ""}" data-tab="${k}">${k} ${db.data[k].length}건${n ? ` · 신규 ${n}` : ""}</button>`;
     }).join("");
     const f = $("filter").value;
-    const rows = db.data[tab].filter((r) => !f || r["상태"] === f).reverse();
-    const skip = ["_row", "개인정보동의", "접수일시", "상태", "메모", "내용", "소개", "회사", "업체명", "품목", "공정"];
-    $("list").innerHTML = rows.length ? rows.map((r) => `
+    const rows = db.data[tab].filter((r) => !f || r["상태"] === f).slice().reverse();
+    const skip = ["_row", "의뢰번호", "개인정보동의", "접수일시", "상태", "메모", "내용", "소개", "회사", "업체명", "품목", "공정",
+                  "질문", "리포트", "연락처공개", "리포트제공일", "열람기록", "리포트키"];
+    $("list").innerHTML = rows.length ? rows.map((r) => {
+      const qs = parse(r["질문"], []);
+      const rep = parse(r["리포트"], null);
+      const nSup = rep && rep.suppliers ? rep.suppliers.length : 0;
+      return `
       <article class="card" data-row="${r._row}">
         <div class="card-top">
           <span class="st st-${esc(r["상태"])}">${esc(r["상태"] || "신규")}</span>
           <b>${esc(r["품목"] || r["공정"])}</b>
           <span>${esc(r["회사"] || r["업체명"])}</span>
+          ${r["의뢰번호"] ? `<span class="rid">${esc(r["의뢰번호"])}</span>` : ""}
           <span class="when">${esc(r["접수일시"])}</span>
         </div>
-        <div class="kv">${Object.keys(r).filter((k) => !skip.includes(k) && r[k] !== "").map((k) => {
+        <div class="kv">${Object.keys(r).filter((k) => !skip.includes(k) && r[k] !== "" && r[k] != null).map((k) => {
           const v = esc(r[k]);
           const val = k === "연락처" ? `<a href="tel:${v.replace(/[^0-9+]/g, "")}">${v}</a>` : k === "이메일" ? `<a href="mailto:${v}">${v}</a>` : v;
           return `<span>${k} <b>${val}</b></span>`;
         }).join("")}</div>
+        ${qs.length ? `<ol class="qs">${qs.map((q) => `<li>${esc(q)}</li>`).join("")}</ol>` : ""}
         ${(r["내용"] || r["소개"]) ? `<p class="body">${esc(r["내용"] || r["소개"])}</p>` : ""}
+        ${tab === "의뢰" && rep ? `<div class="rep-line ${r["리포트제공일"] ? "" : "draft"}">
+            공급자 ${nSup}곳 · ${r["리포트제공일"] ? "제공 " + esc(r["리포트제공일"]) : "임시 저장"} · 연락처 ${r["연락처공개"] === "Y" ? "공개" : "비공개"}
+            ${r["열람기록"] ? ` · 열람 ${String(r["열람기록"]).split("\n").filter(String).length}회 (최근 ${esc(String(r["열람기록"]).split("\n").filter(String).pop())})` : ""}
+          </div>` : ""}
         <div class="ctl">
           <select class="setStatus">${db.statuses.map((s) => `<option ${s === r["상태"] ? "selected" : ""}>${s}</option>`).join("")}</select>
-          <input class="setMemo" placeholder="메모 (연결한 업체, 견적, 정산액 등)" value="${esc(r["메모"])}">
+          <input class="setMemo" placeholder="메모 (견적, 정산액 등)" value="${esc(r["메모"])}">
           <button class="btn btn-sm save">저장</button>
+          ${tab === "의뢰" ? `<button class="btn btn-sm btn-s edit">${rep ? "공급자 리스트 수정" : "공급자 리스트 작성"}</button>` : ""}
         </div>
-      </article>`).join("") : '<p class="empty">접수된 내용이 없습니다.</p>';
+      </article>`;
+    }).join("") : '<p class="empty">접수된 내용이 없습니다.</p>';
   }
 
+  // ---------- 리스트 편집기 ----------
+  let ed = null; // { row, questions, suppliers }
+  const ANS_KEYS = [["O", "● 가능", "a-o"], ["P", "▲ 조건부", "a-p"], ["X", "✕ 불가", "a-x"], ["", "미확인", "a-n"]];
+  const FIELDS = [["name", "업체명"], ["person", "담당자"], ["phone", "연락처"], ["email", "이메일"], ["region", "지역"], ["price", "단가"], ["moq", "MOQ"], ["due", "납기"]];
+
+  function openEditor(r) {
+    const rep = parse(r["리포트"], null);
+    ed = {
+      r, row: r._row,
+      questions: rep && rep.questions ? rep.questions.slice() : parse(r["질문"], []).slice(),
+      suppliers: rep && rep.suppliers ? rep.suppliers.map((s) => Object.assign({}, s, { answers: (s.answers || []).map((a) => Object.assign({}, a)) })) : [],
+    };
+    $("edTitle").textContent = `${r["품목"] || "의뢰"} · ${r["의뢰번호"] || ""}`;
+    $("edReveal").checked = r["연락처공개"] === "Y";
+    $("edPick").innerHTML = '<option value="">등록 공급사에서 고르기</option>' + (db.data["공급사"] || []).map((s, i) =>
+      `<option value="${i}">${esc(s["업체명"])} · ${esc(s["분야"])} · ${esc(s["공정"])}</option>`).join("");
+    $("edLink").classList.toggle("show", !!r["리포트제공일"]);
+    if (r["리포트제공일"]) setLink(r);
+    $("edPrevBox").hidden = true;
+    drawEditor();
+    $("ed").hidden = false; document.body.style.overflow = "hidden";
+  }
+  function closeEditor() { $("ed").hidden = true; document.body.style.overflow = ""; ed = null; }
+
+  function drawEditor() {
+    $("edQs").innerHTML = ed.questions.map((q, i) => `
+      <div class="eq"><span>${i + 1}.</span><input data-q="${i}" value="${esc(q)}"><button class="x" data-delq="${i}" title="삭제">✕</button></div>`).join("")
+      || '<p class="note">질문이 없습니다. 아래에서 추가하세요.</p>';
+    $("edSups").innerHTML = ed.suppliers.map((s, si) => `
+      <div class="box sup" data-s="${si}">
+        <div class="sup-head"><b>공급자 ${si + 1}</b><button class="x" data-dels="${si}" title="삭제">✕ 삭제</button></div>
+        <div class="sup-grid">
+          ${FIELDS.map(([k, l]) => `<div><label>${l}</label><input data-f="${k}" value="${esc(s[k])}"></div>`).join("")}
+          <div class="wide"><label>상담 메모 (수요자에게 보임)</label><textarea data-f="memo" rows="2">${esc(s.memo)}</textarea></div>
+        </div>
+        ${ed.questions.map((q, qi) => {
+          const a = (s.answers[qi] = s.answers[qi] || { a: "", note: "" });
+          return `<div class="ans-row" data-qi="${qi}">
+            <span class="q">${qi + 1}. ${esc(q)}</span>
+            <span class="seg">${ANS_KEYS.map(([k, l, c]) => `<button type="button" class="${c} ${a.a === k ? "on" : ""}" data-a="${k}">${l}</button>`).join("")}</span>
+            <input data-note placeholder="메모 (예: 500개부터, 샘플비 5만 원)" value="${esc(a.note)}">
+          </div>`;
+        }).join("")}
+      </div>`).join("");
+  }
+
+  $("edQs").addEventListener("input", (e) => { const i = e.target.dataset.q; if (i !== undefined) ed.questions[+i] = e.target.value; });
+  $("edQs").addEventListener("change", drawEditor);
+  $("edQs").addEventListener("click", (e) => {
+    const i = e.target.dataset.delq; if (i === undefined) return;
+    if (!confirm("이 질문과 각 공급자의 답을 지울까요?")) return;
+    ed.questions.splice(+i, 1); ed.suppliers.forEach((s) => s.answers.splice(+i, 1)); drawEditor();
+  });
+  $("edQAdd").onclick = () => { const v = $("edQNew").value.trim(); if (!v) return; ed.questions.push(v); $("edQNew").value = ""; drawEditor(); };
+  $("edQNew").onkeydown = (e) => { if (e.key === "Enter") $("edQAdd").click(); };
+
+  $("edSups").addEventListener("input", (e) => {
+    const box = e.target.closest("[data-s]"); if (!box) return;
+    const s = ed.suppliers[+box.dataset.s];
+    if (e.target.dataset.f) s[e.target.dataset.f] = e.target.value;
+    if (e.target.hasAttribute("data-note")) s.answers[+e.target.closest("[data-qi]").dataset.qi].note = e.target.value;
+  });
+  $("edSups").addEventListener("click", (e) => {
+    const box = e.target.closest("[data-s]"); if (!box) return;
+    const si = +box.dataset.s;
+    if (e.target.dataset.dels !== undefined) { if (confirm("이 공급자를 리스트에서 뺄까요?")) { ed.suppliers.splice(si, 1); drawEditor(); } return; }
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    const qi = +b.closest("[data-qi]").dataset.qi;
+    ed.suppliers[si].answers[qi].a = b.dataset.a;
+    b.parentNode.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+  });
+  $("edAddPick").onclick = () => {
+    const v = $("edPick").value; if (v === "") return;
+    const p = db.data["공급사"][+v];
+    ed.suppliers.push({ name: p["업체명"], person: p["이름"], phone: p["연락처"], email: p["이메일"], region: p["지역"], moq: p["MOQ"], answers: [] });
+    drawEditor(); $("edPick").value = "";
+  };
+  $("edAddBlank").onclick = () => { ed.suppliers.push({ answers: [] }); drawEditor(); };
+
+  function reportData() {
+    const n = ed.questions.length;
+    return { questions: ed.questions.map((q) => q.trim()),
+             suppliers: ed.suppliers.map((s) => Object.assign({}, s, { answers: s.answers.slice(0, n) })) };
+  }
+  $("edPreview").onclick = () => {
+    const r = ed.r, rep = reportData(), reveal = $("edReveal").checked;
+    const view = { id: r["의뢰번호"], item: r["품목"], cat: r["분야"], qty: r["수량"], due: r["납기"], date: r["리포트제공일"] || "", reveal,
+      questions: rep.questions, suppliers: rep.suppliers.map((s, i) => reveal ? s : Object.assign({}, s, { name: "공급사 " + String.fromCharCode(65 + i), person: "", phone: "", email: "" })) };
+    ReportView.render($("edPrev"), view);
+    $("edPrevBox").hidden = false; $("edPrevBox").scrollIntoView({ behavior: "smooth" });
+  };
+
+  function setLink(r) {
+    const url = reportUrl(r);
+    $("edMsg").value = `[${S.brand}] 요청하신 "${r["품목"]}" 공급자 리스트입니다.\n업체별로 질문에 얼마나 맞는지 체크해 두었습니다.\n${url}\n문의 ${S.phone}`;
+    $("edOpen").href = url;
+    $("edLink").classList.add("show");
+  }
+  async function save(publish) {
+    if (publish && !ed.suppliers.length) { alert("공급자를 1곳 이상 추가하세요."); return; }
+    if (publish && ed.suppliers.some((s) => !String(s.name || "").trim())) { alert("업체명이 비어 있는 공급자가 있습니다."); return; }
+    const btn = publish ? $("edPublish") : $("edSave");
+    btn.disabled = true;
+    const rep = reportData(), reveal = $("edReveal").checked;
+    await post({ action: "saveReport", sheet: "의뢰", row: ed.row, report: rep, reveal, publish });
+    // 화면 상태 갱신
+    const r = ed.r;
+    r["리포트"] = JSON.stringify(rep); r["연락처공개"] = reveal ? "Y" : "N";
+    if (publish && !r["리포트제공일"]) {
+      const d = new Date(), z = (n) => String(n).padStart(2, "0");
+      r["리포트제공일"] = `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
+      if (["신규", "확인중", "업체수배"].includes(r["상태"])) r["상태"] = "리스트전달";
+    }
+    if (publish) setLink(r);
+    btn.disabled = false;
+    btn.textContent = "저장됨 ✓"; setTimeout(() => (btn.textContent = publish ? "저장하고 링크 만들기" : "임시 저장"), 1500);
+    render();
+  }
+  $("edSave").onclick = () => save(false);
+  $("edPublish").onclick = () => save(true);
+  $("edCopy").onclick = async () => {
+    try { await navigator.clipboard.writeText($("edMsg").value); $("edCopy").textContent = "복사됨 ✓"; }
+    catch (e) { $("edMsg").select(); document.execCommand("copy"); $("edCopy").textContent = "복사됨 ✓"; }
+    setTimeout(() => ($("edCopy").textContent = "복사"), 1500);
+  };
+  $("edClose").onclick = () => { if (confirm("저장하지 않은 내용은 사라집니다. 닫을까요?")) closeEditor(); };
+
+  // ---------- 이벤트 ----------
   $("loginBtn").onclick = () => { token = $("token").value.trim(); start(); };
   $("token").onkeydown = (e) => { if (e.key === "Enter") $("loginBtn").click(); };
   $("reload").onclick = start;
-  $("logout").onclick = () => { try { localStorage.removeItem("wwc_token"); } catch (e) {} location.reload(); };
+  $("logout").onclick = () => { try { localStorage.removeItem("wwc_token"); } catch (e) {} location.href = "admin.html"; };
   $("filter").onchange = render;
   $("tabs").onclick = (e) => { const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; render(); } };
   $("list").onclick = async (e) => {
+    const card = e.target.closest(".card"); if (!card) return;
+    const row = +card.dataset.row, r = db.data[tab].find((x) => x._row === row);
+    if (e.target.classList.contains("edit")) return openEditor(r);
     if (!e.target.classList.contains("save")) return;
-    const card = e.target.closest(".card"), row = +card.dataset.row;
     const status = card.querySelector(".setStatus").value, memo = card.querySelector(".setMemo").value;
     e.target.disabled = true; e.target.textContent = "저장 중";
-    await fetch(S.endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "status", token, sheet: tab, row, status, memo }) });
-    const r = db.data[tab].find((x) => x._row === row); r["상태"] = status; r["메모"] = memo;
+    await post({ action: "status", sheet: tab, row, status, memo });
+    r["상태"] = status; r["메모"] = memo;
     render();
   };
 
-  if (token && S.endpoint) start();
+  // ---------- 예시 데이터 ----------
+  function demoData() {
+    return { ok: true, statuses: ["신규", "확인중", "업체수배", "리스트전달", "연결완료", "정산완료", "보류"], data: {
+      "의뢰": [
+        { _row: 2, "의뢰번호": "R261105-001", "접수일시": "2026-11-05 10:12", "상태": "신규", "회사": "멍멍상회(예시)", "이름": "홍길동", "연락처": "010-0000-0000",
+          "분야": "소량 OEM·ODM 제조", "품목": "강아지 간식 파우치", "수량": "1,000개", "예산": "개당 700원 이하", "납기": "6주 이내",
+          "질문": JSON.stringify(["최소 주문 수량(MOQ)이 우리 수량에 맞나요?", "샘플을 먼저 만들 수 있나요? (비용·기간)", "필요한 인증(HACCP, KC 등)이 있나요?"]),
+          "내용": "닭가슴살 져키, 50g 파우치", "리포트키": "demo" },
+      ],
+      "공급사": [
+        { _row: 2, "접수일시": "2026-11-04 15:00", "상태": "신규", "업체명": "가나식품(예시)", "이름": "김 실장", "연락처": "010-0000-0000", "분야": "소량 OEM·ODM 제조", "지역": "경기 김포", "공정": "육포·져키 건조, 파우치 충진", "MOQ": "500개" },
+        { _row: 3, "접수일시": "2026-11-04 16:00", "상태": "신규", "업체명": "다라푸드(예시)", "이름": "이 팀장", "연락처": "010-0000-0000", "분야": "소량 OEM·ODM 제조", "지역": "충북 음성", "공정": "반려동물 간식 OEM", "MOQ": "1,000개" },
+      ],
+    } };
+  }
+
+  if (DEMO) start();
+  else if (token && S.endpoint) start();
 })();
 </script>
 </body>

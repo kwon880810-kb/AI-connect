@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>윈-윈 커넥트 | 만들 곳과 만들 사람을 잇는 제조·공급 연결</title>
-<meta name="description" content="소량 제작이 필요한 사업자와 생산 여력이 있는 공장을 직접 연결합니다. 요구사항에 맞는 업체를 찾아 명함과 초기 상담 내용까지 전달해 드립니다. 의뢰 접수는 무료.">
+<meta name="description" content="소량 제작이 필요한 사업자와 생산 여력이 있는 공장을 직접 연결합니다. 질문마다 업체별 가능 여부를 체크한 공급자 리스트를 보내 드립니다. 의뢰 접수는 무료.">
 <meta name="theme-color" content="#1f4fd6">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -46,8 +46,8 @@
       </div>
       <ul class="hero-points">
         <li>의뢰 접수 무료</li>
-        <li>업체 2~3곳 비교</li>
-        <li>초기 상담 내용까지 전달</li>
+        <li>질문별 체크리스트로 비교</li>
+        <li>업체에 직접 연락</li>
       </ul>
     </div>
     <div class="hero-card" aria-hidden="true">
@@ -104,12 +104,12 @@
 <section class="sec sec-alt" id="how">
   <div class="wrap">
     <h2 class="sec-title">진행 방식</h2>
-    <p class="sec-sub">의뢰를 남기시면 담당자가 직접 업체를 알아보고, 상담까지 해 본 뒤 결과를 전해 드립니다.</p>
+    <p class="sec-sub">궁금한 점을 질문으로 남겨 주시면, 업체마다 하나하나 확인해서 체크리스트로 정리해 드립니다.</p>
     <ol class="steps">
-      <li><span class="num">1</span><h3>의뢰 접수</h3><p>만들 물건, 수량, 예산, 납기를 남겨 주세요. 하루 안에 연락드려 내용을 확인합니다.</p></li>
-      <li><span class="num">2</span><h3>업체 수배</h3><p>인맥과 등록 공급사 중 조건이 맞는 업체 2~3곳에 직접 연락해 가능 여부를 확인합니다.</p></li>
-      <li><span class="num">3</span><h3>명함·상담 내용 전달</h3><p>가능한 업체의 명함과 초기 상담 내용(단가, MOQ, 납기, 특이사항)을 정리해 보내 드립니다.</p></li>
-      <li><span class="num">4</span><h3>연결 및 정산</h3><p>원하시는 업체와 직접 거래를 시작하시면 됩니다. 연결비와 성사 수수료로 정산합니다.</p></li>
+      <li><span class="num">1</span><h3>요청서 + 질문 작성</h3><p>만들 물건, 수량, 예산, 납기와 함께 업체에 묻고 싶은 질문을 적어 주세요.</p></li>
+      <li><span class="num">2</span><h3>업체 수배·확인</h3><p>인맥과 등록 공급사 중 맞는 업체 2~3곳에 연락해 질문마다 가능 여부를 확인합니다.</p></li>
+      <li><span class="num">3</span><h3>공급자 리스트 전달</h3><p>업체별로 질문에 얼마나 맞는지 체크한 리스트를 전용 링크로 보내 드립니다. 연결비를 내시면 연락처가 공개됩니다.</p></li>
+      <li><span class="num">4</span><h3>직접 연락·거래</h3><p>리스트를 보고 마음에 드는 업체에 직접 연락하세요. 의뢰번호를 말씀하시면 바로 이어서 상담됩니다.</p></li>
     </ol>
   </div>
 </section>
@@ -143,7 +143,7 @@
       <div class="fee fee-main">
         <p class="fee-name">연결비 <small>정액 · 수요자</small></p>
         <p class="fee-val" data-fee="connect">50,000원</p>
-        <p class="fee-desc">가능한 업체의 명함과 초기 상담 내용을 받으실 때 한 번 냅니다. 업체를 찾지 못하면 받지 않습니다.</p>
+        <p class="fee-desc">공급자 리스트를 확인하시고 업체 연락처를 받으실 때 한 번 냅니다. 맞는 업체를 찾지 못하면 받지 않습니다.</p>
       </div>
       <div class="fee">
         <p class="fee-name">성사 수수료 <small>조건부 · 공급자</small></p>
@@ -193,6 +193,26 @@
         <label>수량<input name="수량" placeholder="예: 1,000개"></label>
         <label>예산<input name="예산" placeholder="예: 개당 500원"></label>
         <label>희망 납기<input name="납기" placeholder="예: 6주 이내"></label>
+      </div>
+      <div class="qbuilder">
+        <p class="qb-title">공급자에게 확인할 질문 <i>*</i></p>
+        <p class="qb-help">적어 주신 질문마다 업체별로 <b class="a-o">● 가능</b> <b class="a-p">▲ 조건부</b> <b class="a-x">✕ 불가</b>를 확인해서 체크리스트로 보내 드립니다. 아래 예시를 누르면 바로 추가됩니다.</p>
+        <div class="qb-presets">
+          <button type="button">최소 주문 수량(MOQ)이 우리 수량에 맞나요?</button>
+          <button type="button">샘플을 먼저 만들 수 있나요? (비용·기간)</button>
+          <button type="button">희망 납기 안에 생산할 수 있나요?</button>
+          <button type="button">예산 단가 안에서 가능한가요?</button>
+          <button type="button">디자인·패키지 작업도 해 주나요?</button>
+          <button type="button">필요한 인증(HACCP, KC 등)이 있나요?</button>
+          <button type="button">정기(월 단위) 납품이 가능한가요?</button>
+          <button type="button">완성품을 물류창고로 바로 보내 줄 수 있나요?</button>
+        </div>
+        <ol class="qb-list"></ol>
+        <div class="qb-add">
+          <input type="text" placeholder="직접 질문 쓰기 (예: 친환경 소재로 만들 수 있나요?)" maxlength="120">
+          <button type="button" class="btn btn-sm">추가</button>
+        </div>
+        <input type="hidden" name="질문" value="[]">
       </div>
       <label>자세한 내용<textarea name="내용" rows="5" placeholder="규격, 재질, 참고 제품, 현재 거래처의 문제점 등"></textarea></label>
       <div class="consent">
@@ -252,14 +272,14 @@
         <ul>
           <li>수집 항목: 업체명, 담당자 성함, 연락처, 이메일</li>
           <li>이용 목적: 맞는 의뢰 안내, 업체 연결</li>
-          <li>제공 대상: 연결하는 수요자 (명함·연락처·초기 상담 내용 전달)</li>
+          <li>제공 대상: 연결하는 수요자 (공급자 리스트에 업체명·담당자·연락처·체크 결과·상담 내용 게재)</li>
           <li>보유 기간: 등록 해지 요청 시까지 (거래가 있으면 관련 법령에 따른 기간)</li>
           <li>동의하지 않으실 수 있으며, 이 경우 공급사 등록이 어렵습니다.</li>
         </ul>
         <a href="privacy.html" target="_blank">개인정보처리방침 전문</a>
       </div>
       <label class="check"><input type="checkbox" name="동의" required><span>개인정보 수집·이용에 동의합니다. <i>*</i></span></label>
-      <label class="check"><input type="checkbox" name="제공동의" required><span>연결하는 수요자에게 명함·연락처·상담 내용을 제공하는 데 동의합니다. <i>*</i></span></label>
+      <label class="check"><input type="checkbox" name="제공동의" required><span>수요자에게 제공하는 공급자 리스트에 업체명·담당자·연락처·체크 결과·상담 내용을 싣는 데 동의합니다. <i>*</i></span></label>
       <label class="check"><input type="checkbox" name="수수료동의" required><span>윈-윈 커넥트를 통해 소개받은 고객과 계약하면 소개일로부터 1년 동안 성사 수수료(<span data-fee="success">100,000원</span>)를 내는 데 동의합니다. <i>*</i></span></label>
       <button class="btn btn-block btn-s" type="submit">공급사 등록하기</button>
       <p class="form-msg" role="status"></p>
@@ -272,7 +292,8 @@
   <div class="wrap faq">
     <h2 class="sec-title">자주 묻는 질문</h2>
     <details><summary>아주 적은 수량도 의뢰할 수 있나요?</summary><p>네. 소량을 받아 주는 업체를 찾는 일이 저희가 가장 많이 하는 일입니다. 수량이 너무 적어 맞는 곳이 없으면 그 사실과 대안(최소 수량, 예상 단가)을 알려 드리고, 연결비는 받지 않습니다.</p></details>
-    <details><summary>업체를 찾는 데 얼마나 걸리나요?</summary><p>분야에 따라 다르지만 보통 3~7일 안에 명함과 초기 상담 내용을 전해 드립니다.</p></details>
+    <details><summary>업체를 찾는 데 얼마나 걸리나요?</summary><p>분야에 따라 다르지만 보통 3~7일 안에 공급자 리스트를 보내 드립니다.</p></details>
+    <details><summary>공급자 리스트는 어떻게 받나요?</summary><p>의뢰마다 전용 링크를 문자나 카톡으로 보내 드립니다. 링크에서 업체별로 질문에 ● 가능 / ▲ 조건부 / ✕ 불가 중 어디에 해당하는지와 단가·MOQ·납기, 상담 메모를 비교해 보실 수 있습니다. 연결비를 확인하면 같은 링크에서 업체명과 연락처가 공개됩니다.</p></details>
     <details><summary>연결 뒤에도 중간에서 관리해 주나요?</summary><p>기본은 연결까지입니다. 거래는 두 회사가 직접 하시고, 진행 중 문제가 생기면 언제든 연락 주세요. 생산 후 보관·출고가 필요하면 운영사인 KB물류에서 이어서 맡을 수 있습니다.</p></details>
     <details><summary>연결된 업체와 거래하지 않아도 되나요?</summary><p>네. 상담 내용을 보시고 거래 여부는 자유롭게 정하시면 됩니다. 연결비(50,000원)는 업체 정보와 상담 내용을 받으실 때 한 번만 내고, 거래를 하지 않으셔도 추가 비용은 없습니다.</p></details>
     <details><summary>공급사로 등록하면 비용이 드나요?</summary><p>등록과 의뢰 소개는 무료입니다. 소개받은 거래가 실제로 계약됐을 때만 정해진 성사 수수료(100,000원)를 받습니다.</p></details>
