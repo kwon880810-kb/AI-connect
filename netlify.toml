@@ -1,0 +1,19 @@
+# Netlify 배포 설정
+# 홈페이지는 connect 폴더만 공개합니다.
+# 저장소의 다른 폴더(카카오톡 대화내용, 로블록스 등)는 절대 배포되지 않습니다.
+[build]
+  publish = "connect"
+  command = ""
+
+# 개발·시험용 파일은 공개하지 않음
+[[redirects]]
+  from = "/supabase/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/*.md"
+  to = "/404.html"
+  status = 404
+  force = true
