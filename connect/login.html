@@ -22,7 +22,7 @@
 
     <form class="form" id="loginForm" novalidate>
       <h2 style="margin:0">로그인</h2>
-      <label>이메일<input name="email" type="email" autocomplete="email" required></label>
+      <label>이메일 또는 아이디<input name="email" type="text" autocomplete="username" autocapitalize="off" required></label>
       <label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label>
       <button class="btn btn-block" type="submit">로그인</button>
       <p class="form-msg" role="status"></p>
@@ -85,7 +85,10 @@
     const f = e.target, msg = f.querySelector(".form-msg");
     if (!check(f)) return (msg.textContent = "이메일과 비밀번호를 입력하세요."), (msg.className = "form-msg err");
     msg.textContent = "로그인 중…"; msg.className = "form-msg";
-    const { error } = await sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value });
+    // 아이디만 넣으면 시험 계정 주소로 바꿈 (예: ct_test1 → ct_test1@winwin.test)
+    const id = f.email.value.trim();
+    const email = id.includes("@") ? id : id + "@winwin.test";
+    const { error } = await sb.auth.signInWithPassword({ email, password: f.password.value });
     if (error) { msg.textContent = error.message === "Invalid login credentials" ? "이메일 또는 비밀번호가 맞지 않습니다." : errMsg(error); msg.className = "form-msg err"; return; }
     goHome();
   };
