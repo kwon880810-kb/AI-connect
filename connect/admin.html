@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>KB커넥트 관리자</title>
+<title>윈-윈 커넥트 관리자</title>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="css/style.css">
@@ -49,7 +49,7 @@
 
 <div class="adm" id="app" hidden>
   <div class="adm-top">
-    <h1>KB커넥트 접수 현황</h1>
+    <h1>윈-윈 커넥트 접수 현황</h1>
     <button class="btn btn-sm btn-ghost" id="reload">새로고침</button>
     <button class="btn btn-sm btn-ghost" id="logout">로그아웃</button>
   </div>
@@ -64,7 +64,7 @@
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   let token = "", db = null, tab = "의뢰";
-  try { token = localStorage.getItem("kbc_token") || ""; } catch (e) {}
+  try { token = localStorage.getItem("wwc_token") || ""; } catch (e) {}
 
   if (!S.endpoint) { $("loginMsg").textContent = "js/config.js 의 endpoint 가 비어 있습니다. Apps Script를 먼저 연결하세요."; }
 
@@ -84,7 +84,7 @@
       const res = await load();
       if (!res.ok) throw new Error(res.error);
       db = res;
-      try { localStorage.setItem("kbc_token", token); } catch (e) {}
+      try { localStorage.setItem("wwc_token", token); } catch (e) {}
       $("login").hidden = true; $("app").hidden = false;
       $("filter").innerHTML = '<option value="">전체 상태</option>' + res.statuses.map((s) => `<option>${s}</option>`).join("");
       render();
@@ -101,7 +101,7 @@
     }).join("");
     const f = $("filter").value;
     const rows = db.data[tab].filter((r) => !f || r["상태"] === f).reverse();
-    const skip = ["_row", "접수일시", "상태", "메모", "내용", "소개", "회사", "업체명", "품목", "공정"];
+    const skip = ["_row", "개인정보동의", "접수일시", "상태", "메모", "내용", "소개", "회사", "업체명", "품목", "공정"];
     $("list").innerHTML = rows.length ? rows.map((r) => `
       <article class="card" data-row="${r._row}">
         <div class="card-top">
@@ -127,7 +127,7 @@
   $("loginBtn").onclick = () => { token = $("token").value.trim(); start(); };
   $("token").onkeydown = (e) => { if (e.key === "Enter") $("loginBtn").click(); };
   $("reload").onclick = start;
-  $("logout").onclick = () => { try { localStorage.removeItem("kbc_token"); } catch (e) {} location.reload(); };
+  $("logout").onclick = () => { try { localStorage.removeItem("wwc_token"); } catch (e) {} location.reload(); };
   $("filter").onchange = render;
   $("tabs").onclick = (e) => { const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; render(); } };
   $("list").onclick = async (e) => {

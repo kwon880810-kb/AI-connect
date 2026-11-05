@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KB커넥트 | 만들 곳과 만들 사람을 잇는 제조·공급 연결</title>
+<title>윈-윈 커넥트 | 만들 곳과 만들 사람을 잇는 제조·공급 연결</title>
 <meta name="description" content="소량 제작이 필요한 사업자와 생산 여력이 있는 공장을 직접 연결합니다. 요구사항에 맞는 업체를 찾아 명함과 초기 상담 내용까지 전달해 드립니다. 의뢰 접수는 무료.">
 <meta name="theme-color" content="#1f4fd6">
 <link rel="manifest" href="manifest.webmanifest">
@@ -17,7 +17,7 @@
 
 <header class="nav">
   <div class="wrap nav-in">
-    <a href="#top" class="logo"><span class="logo-mark">K</span><span data-site="brand">KB커넥트</span></a>
+    <a href="#top" class="logo"><span class="logo-mark">W</span><span data-site="brand">윈-윈 커넥트</span></a>
     <nav class="menu" id="menu">
       <a href="#how">진행 방식</a>
       <a href="#fields">연결 분야</a>
@@ -57,7 +57,7 @@
           <b>반려동물 간식 브랜드</b>
           <small>파우치 1,000개 소량 생산</small>
         </div>
-        <div class="link"><span></span><b>KB커넥트</b><span></span></div>
+        <div class="link"><span></span><b>윈-윈 커넥트</b><span></span></div>
         <div class="party">
           <span class="tag tag-s">공급자</span>
           <b>경기권 식품 OEM 공장</b>
@@ -133,7 +133,7 @@
 <section class="sec sec-alt" id="fee">
   <div class="wrap">
     <h2 class="sec-title">비용</h2>
-    <p class="sec-sub">맞는 업체를 찾았을 때만 비용이 생깁니다.</p>
+    <p class="sec-sub">맞는 업체를 찾았을 때만 비용이 생깁니다. <span class="fee-vat" data-site="vatNote"></span></p>
     <div class="fees">
       <div class="fee">
         <p class="fee-name">의뢰 접수·상담</p>
@@ -141,14 +141,14 @@
         <p class="fee-desc">요구사항 정리와 가능 여부 확인까지는 비용이 없습니다.</p>
       </div>
       <div class="fee fee-main">
-        <p class="fee-name">연결비 <small>수요자</small></p>
-        <p class="fee-val" data-fee="connect">건당 50,000원~</p>
-        <p class="fee-desc">가능한 업체의 명함과 초기 상담 내용을 받으실 때 냅니다. 업체를 찾지 못하면 받지 않습니다.</p>
+        <p class="fee-name">연결비 <small>정액 · 수요자</small></p>
+        <p class="fee-val" data-fee="connect">50,000원</p>
+        <p class="fee-desc">가능한 업체의 명함과 초기 상담 내용을 받으실 때 한 번 냅니다. 업체를 찾지 못하면 받지 않습니다.</p>
       </div>
       <div class="fee">
-        <p class="fee-name">성사 수수료 <small>공급자</small></p>
-        <p class="fee-val" data-fee="success">거래금액의 5~10%</p>
-        <p class="fee-desc">연결된 거래가 실제로 계약되면 공급자가 냅니다. 공급사 등록은 무료입니다.</p>
+        <p class="fee-name">성사 수수료 <small>조건부 · 공급자</small></p>
+        <p class="fee-val" data-fee="success">100,000원</p>
+        <p class="fee-desc">연결된 거래가 실제로 계약됐을 때만 냅니다. 계약이 안 되면 없습니다. 공급사 등록은 무료입니다.</p>
       </div>
     </div>
   </div>
@@ -195,7 +195,19 @@
         <label>희망 납기<input name="납기" placeholder="예: 6주 이내"></label>
       </div>
       <label>자세한 내용<textarea name="내용" rows="5" placeholder="규격, 재질, 참고 제품, 현재 거래처의 문제점 등"></textarea></label>
-      <label class="check"><input type="checkbox" name="동의" required> 상담을 위한 개인정보(성함, 연락처, 이메일) 수집·이용에 동의합니다. <i>*</i></label>
+      <div class="consent">
+        <p><b>개인정보 수집·이용 및 제3자 제공 안내</b></p>
+        <ul>
+          <li>수집 항목: 성함, 연락처, 이메일, 회사명</li>
+          <li>이용 목적: 의뢰 상담, 업체 수배, 연결 결과 전달</li>
+          <li>제공 대상: 의뢰 조건에 맞는 공급 업체 (업체 수배 시 의뢰 내용과 연락처 전달)</li>
+          <li>보유 기간: 상담 종료 후 1년 (계약이 이루어지면 관련 법령에 따른 기간)</li>
+          <li>동의하지 않으실 수 있으며, 이 경우 온라인 의뢰는 어렵고 전화로 상담받으실 수 있습니다.</li>
+        </ul>
+        <a href="privacy.html" target="_blank">개인정보처리방침 전문</a>
+      </div>
+      <label class="check"><input type="checkbox" name="동의" required><span>개인정보 수집·이용에 동의합니다. <i>*</i></span></label>
+      <label class="check"><input type="checkbox" name="제공동의" required><span>업체 수배를 위해 공급 업체에 의뢰 내용과 연락처를 제공하는 데 동의합니다. <i>*</i></span></label>
       <button class="btn btn-block" type="submit">의뢰 보내기</button>
       <p class="form-msg" role="status"></p>
     </form>
@@ -235,7 +247,20 @@
         <label>월 생산 여력<input name="여력" placeholder="예: 월 2만 개 추가 가능"></label>
       </div>
       <label>업체 소개<textarea name="소개" rows="4" placeholder="주요 설비, 거래 이력, 강점 등"></textarea></label>
-      <label class="check"><input type="checkbox" name="동의" required> 연결을 위한 정보(업체명, 담당자, 연락처) 수집·이용, 수요자에게 명함 전달, 그리고 KB커넥트를 통해 소개받은 고객과 계약 시 성사 수수료가 발생하는 것에 동의합니다. <i>*</i></label>
+      <div class="consent">
+        <p><b>개인정보 수집·이용 및 제3자 제공 안내</b></p>
+        <ul>
+          <li>수집 항목: 업체명, 담당자 성함, 연락처, 이메일</li>
+          <li>이용 목적: 맞는 의뢰 안내, 업체 연결</li>
+          <li>제공 대상: 연결하는 수요자 (명함·연락처·초기 상담 내용 전달)</li>
+          <li>보유 기간: 등록 해지 요청 시까지 (거래가 있으면 관련 법령에 따른 기간)</li>
+          <li>동의하지 않으실 수 있으며, 이 경우 공급사 등록이 어렵습니다.</li>
+        </ul>
+        <a href="privacy.html" target="_blank">개인정보처리방침 전문</a>
+      </div>
+      <label class="check"><input type="checkbox" name="동의" required><span>개인정보 수집·이용에 동의합니다. <i>*</i></span></label>
+      <label class="check"><input type="checkbox" name="제공동의" required><span>연결하는 수요자에게 명함·연락처·상담 내용을 제공하는 데 동의합니다. <i>*</i></span></label>
+      <label class="check"><input type="checkbox" name="수수료동의" required><span>윈-윈 커넥트를 통해 소개받은 고객과 계약하면 소개일로부터 1년 동안 성사 수수료(<span data-fee="success">100,000원</span>)를 내는 데 동의합니다. <i>*</i></span></label>
       <button class="btn btn-block btn-s" type="submit">공급사 등록하기</button>
       <p class="form-msg" role="status"></p>
     </form>
@@ -249,8 +274,8 @@
     <details><summary>아주 적은 수량도 의뢰할 수 있나요?</summary><p>네. 소량을 받아 주는 업체를 찾는 일이 저희가 가장 많이 하는 일입니다. 수량이 너무 적어 맞는 곳이 없으면 그 사실과 대안(최소 수량, 예상 단가)을 알려 드리고, 연결비는 받지 않습니다.</p></details>
     <details><summary>업체를 찾는 데 얼마나 걸리나요?</summary><p>분야에 따라 다르지만 보통 3~7일 안에 명함과 초기 상담 내용을 전해 드립니다.</p></details>
     <details><summary>연결 뒤에도 중간에서 관리해 주나요?</summary><p>기본은 연결까지입니다. 거래는 두 회사가 직접 하시고, 진행 중 문제가 생기면 언제든 연락 주세요. 생산 후 보관·출고가 필요하면 운영사인 KB물류에서 이어서 맡을 수 있습니다.</p></details>
-    <details><summary>연결된 업체와 거래하지 않아도 되나요?</summary><p>네. 상담 내용을 보시고 거래 여부는 자유롭게 정하시면 됩니다. 연결비는 업체 정보와 상담 내용을 받으실 때 한 번만 냅니다.</p></details>
-    <details><summary>공급사로 등록하면 비용이 드나요?</summary><p>등록과 의뢰 소개는 무료입니다. 소개받은 거래가 실제로 계약됐을 때만 성사 수수료를 받습니다.</p></details>
+    <details><summary>연결된 업체와 거래하지 않아도 되나요?</summary><p>네. 상담 내용을 보시고 거래 여부는 자유롭게 정하시면 됩니다. 연결비(50,000원)는 업체 정보와 상담 내용을 받으실 때 한 번만 내고, 거래를 하지 않으셔도 추가 비용은 없습니다.</p></details>
+    <details><summary>공급사로 등록하면 비용이 드나요?</summary><p>등록과 의뢰 소개는 무료입니다. 소개받은 거래가 실제로 계약됐을 때만 정해진 성사 수수료(100,000원)를 받습니다.</p></details>
     <details><summary>제 의뢰 내용이 다른 곳에 공개되나요?</summary><p>회사명·연락처는 공개하지 않습니다. '지금 찾고 있는 일' 게시판에는 품목과 수량처럼 업체를 찾는 데 필요한 정보만, 동의하신 경우에만 올립니다.</p></details>
   </div>
 </section>
@@ -260,8 +285,10 @@
 <footer class="foot">
   <div class="wrap foot-in">
     <div>
-      <p class="logo"><span class="logo-mark">K</span><span data-site="brand">KB커넥트</span></p>
+      <p class="logo"><span class="logo-mark">W</span><span data-site="brand">윈-윈 커넥트</span></p>
       <p class="foot-sub">운영 <span data-site="operator">KB물류</span> · <span data-site="address"></span></p>
+      <p class="foot-sub" id="bizInfo"></p>
+      <p class="foot-sub"><a href="privacy.html"><b>개인정보처리방침</b></a></p>
     </div>
     <div class="foot-contact">
       <a data-href="tel" href="#">☎ <span data-site="phone"></span></a>

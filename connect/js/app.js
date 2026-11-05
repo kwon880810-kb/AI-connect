@@ -17,6 +17,15 @@
     el.href = v;
   });
 
+  // ---- 사업자 정보 (하단) ----
+  const biz = document.getElementById("bizInfo");
+  if (biz) {
+    biz.textContent = [
+      S.operator && "상호 " + S.operator, S.ceo && "대표 " + S.ceo,
+      S.bizNo && "사업자등록번호 " + S.bizNo, S.mailOrderNo && "통신판매업 " + S.mailOrderNo,
+    ].filter(Boolean).join(" · ");
+  }
+
   // ---- 게시판 ----
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const board = document.getElementById("boardList");
@@ -52,7 +61,9 @@
       if (bad) { say("표시된 항목을 채워 주세요.", "err"); bad.focus(); return; }
 
       const data = { 구분: form.dataset.kind, 접수일시: new Date().toLocaleString("ko-KR") };
-      new FormData(form).forEach((v, k) => { if (k !== "동의") data[k] = String(v).trim(); });
+      new FormData(form).forEach((v, k) => { if (!["동의", "제공동의", "수수료동의"].includes(k)) data[k] = String(v).trim(); });
+      data.개인정보동의 = "수집·이용, 제3자 제공 동의 " + data.접수일시;
+      if (form.querySelector("[name=수수료동의]")) data.수수료동의 = "동의 " + data.접수일시;
 
       btn.disabled = true; say("보내는 중…");
       try {
