@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KB커넥트 | 만들 곳과 만들 사람을 잇는 제조·공급 연결</title>
+<meta name="description" content="소량 제작이 필요한 사업자와 생산 여력이 있는 공장을 직접 연결합니다. 요구사항에 맞는 업체를 찾아 명함과 초기 상담 내용까지 전달해 드립니다. 의뢰 접수는 무료.">
+<meta name="theme-color" content="#1f4fd6">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/config.js"></script>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a href="#top" class="logo"><span class="logo-mark">K</span><span data-site="brand">KB커넥트</span></a>
+    <nav class="menu" id="menu">
+      <a href="#how">진행 방식</a>
+      <a href="#fields">연결 분야</a>
+      <a href="#fee">비용</a>
+      <a href="#board">찾는 중인 일</a>
+      <a href="#faq">자주 묻는 질문</a>
+    </nav>
+    <a href="#request" class="btn btn-sm">의뢰하기</a>
+    <button class="menu-btn" aria-label="메뉴" onclick="document.getElementById('menu').classList.toggle('open')">☰</button>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap hero-in">
+    <div>
+      <p class="eyebrow">제조 · 공급 연결 서비스</p>
+      <h1>만들 곳을 못 찾는 사업자와<br><em>일감을 찾는 공장</em>을 잇습니다</h1>
+      <p class="lead">소량이라 공장에서 받아주지 않거나, 생산 여력은 있는데 거래처가 없으신가요?
+        <span data-site="since">2011</span>년부터 물류 현장에서 쌓은 제조사·셀러 인맥으로 맞는 상대를 찾아 직접 연결해 드립니다.</p>
+      <div class="cta">
+        <a href="#request" class="btn">제작 의뢰하기</a>
+        <a href="#supplier" class="btn btn-ghost">공급사로 등록하기</a>
+      </div>
+      <ul class="hero-points">
+        <li>의뢰 접수 무료</li>
+        <li>업체 2~3곳 비교</li>
+        <li>초기 상담 내용까지 전달</li>
+      </ul>
+    </div>
+    <div class="hero-card" aria-hidden="true">
+      <div class="match">
+        <div class="party">
+          <span class="tag tag-d">수요자</span>
+          <b>반려동물 간식 브랜드</b>
+          <small>파우치 1,000개 소량 생산</small>
+        </div>
+        <div class="link"><span></span><b>KB커넥트</b><span></span></div>
+        <div class="party">
+          <span class="tag tag-s">공급자</span>
+          <b>경기권 식품 OEM 공장</b>
+          <small>MOQ 500개 · 라인 여유 있음</small>
+        </div>
+      </div>
+      <p class="hero-card-note">연결 예시</p>
+    </div>
+  </div>
+</section>
+
+<!-- WHO -->
+<section class="sec">
+  <div class="wrap">
+    <h2 class="sec-title">이런 분들을 연결합니다</h2>
+    <div class="grid2">
+      <article class="who who-d">
+        <span class="tag tag-d">수요자</span>
+        <h3>만들고 싶은데 맡길 곳이 없는 분</h3>
+        <ul>
+          <li>수량이 적어 공장에서 거절당한 소규모 브랜드·셀러</li>
+          <li>제작을 깊게 알아볼 인력이 없는 작은 사업장</li>
+          <li>지금 거래처보다 단가·품질·납기를 비교해 보고 싶은 분</li>
+          <li>포장·조립·부자재처럼 한 번만 필요한 작업처를 찾는 분</li>
+        </ul>
+        <a href="#request" class="more">제작 의뢰하기 →</a>
+      </article>
+      <article class="who who-s">
+        <span class="tag tag-s">공급자</span>
+        <h3>만들 수 있는데 일감이 부족한 곳</h3>
+        <ul>
+          <li>생산 라인·인력에 여유가 있는 제조 공장</li>
+          <li>영업 담당 없이 기존 거래처에만 의존하는 사업장</li>
+          <li>소량·샘플 주문도 받을 수 있는 인쇄소·가공업체</li>
+          <li>포장·키팅·검수 같은 작업을 맡을 수 있는 업체</li>
+        </ul>
+        <a href="#supplier" class="more">공급사로 등록하기 →</a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- HOW -->
+<section class="sec sec-alt" id="how">
+  <div class="wrap">
+    <h2 class="sec-title">진행 방식</h2>
+    <p class="sec-sub">의뢰를 남기시면 담당자가 직접 업체를 알아보고, 상담까지 해 본 뒤 결과를 전해 드립니다.</p>
+    <ol class="steps">
+      <li><span class="num">1</span><h3>의뢰 접수</h3><p>만들 물건, 수량, 예산, 납기를 남겨 주세요. 하루 안에 연락드려 내용을 확인합니다.</p></li>
+      <li><span class="num">2</span><h3>업체 수배</h3><p>인맥과 등록 공급사 중 조건이 맞는 업체 2~3곳에 직접 연락해 가능 여부를 확인합니다.</p></li>
+      <li><span class="num">3</span><h3>명함·상담 내용 전달</h3><p>가능한 업체의 명함과 초기 상담 내용(단가, MOQ, 납기, 특이사항)을 정리해 보내 드립니다.</p></li>
+      <li><span class="num">4</span><h3>연결 및 정산</h3><p>원하시는 업체와 직접 거래를 시작하시면 됩니다. 연결비와 성사 수수료로 정산합니다.</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- FIELDS -->
+<section class="sec" id="fields">
+  <div class="wrap">
+    <h2 class="sec-title">연결 분야</h2>
+    <div class="fields">
+      <div class="field"><b>소량 OEM·ODM 제조</b><span>식품, 반려동물용품, 생활용품, 화장품</span></div>
+      <div class="field"><b>패키지·인쇄</b><span>단상자, 택배 박스, 스티커, 라벨</span></div>
+      <div class="field"><b>부자재·판촉물</b><span>완충재, 쇼핑백, 굿즈, 사은품</span></div>
+      <div class="field"><b>포장·조립·키팅</b><span>선물세트 구성, 바코드 부착, 검수</span></div>
+      <div class="field"><b>보관·출고 (3PL)</b><span>소량 보관, 택배 출고, 쿠팡 입고</span></div>
+      <div class="field"><b>그 밖의 제작</b><span>목록에 없어도 일단 문의해 주세요</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEE -->
+<section class="sec sec-alt" id="fee">
+  <div class="wrap">
+    <h2 class="sec-title">비용</h2>
+    <p class="sec-sub">맞는 업체를 찾았을 때만 비용이 생깁니다.</p>
+    <div class="fees">
+      <div class="fee">
+        <p class="fee-name">의뢰 접수·상담</p>
+        <p class="fee-val" data-fee="request">무료</p>
+        <p class="fee-desc">요구사항 정리와 가능 여부 확인까지는 비용이 없습니다.</p>
+      </div>
+      <div class="fee fee-main">
+        <p class="fee-name">연결비 <small>수요자</small></p>
+        <p class="fee-val" data-fee="connect">건당 50,000원~</p>
+        <p class="fee-desc">가능한 업체의 명함과 초기 상담 내용을 받으실 때 냅니다. 업체를 찾지 못하면 받지 않습니다.</p>
+      </div>
+      <div class="fee">
+        <p class="fee-name">성사 수수료 <small>공급자</small></p>
+        <p class="fee-val" data-fee="success">거래금액의 5~10%</p>
+        <p class="fee-desc">연결된 거래가 실제로 계약되면 공급자가 냅니다. 공급사 등록은 무료입니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BOARD -->
+<section class="sec" id="board">
+  <div class="wrap">
+    <h2 class="sec-title">지금 찾고 있는 일</h2>
+    <p class="sec-sub">공급자분들은 할 수 있는 일이 보이면 연락 주세요. 의뢰자 정보는 공개하지 않습니다.</p>
+    <div class="board" id="boardList"></div>
+    <p class="board-cta">할 수 있는 일이 있나요? <a href="#supplier">공급사로 등록</a>하시면 맞는 의뢰가 들어올 때 먼저 연락드립니다.</p>
+  </div>
+</section>
+
+<!-- REQUEST FORM -->
+<section class="sec sec-alt" id="request">
+  <div class="wrap form-wrap">
+    <div class="form-head">
+      <span class="tag tag-d">수요자</span>
+      <h2>제작 의뢰서</h2>
+      <p>아는 만큼만 적어 주셔도 됩니다. 확인 후 하루 안에 연락드립니다.</p>
+    </div>
+    <form class="form" data-kind="의뢰" novalidate>
+      <div class="row2">
+        <label>회사·브랜드명<input name="회사" autocomplete="organization"></label>
+        <label>담당자 성함 <i>*</i><input name="이름" required autocomplete="name"></label>
+      </div>
+      <div class="row2">
+        <label>연락처 <i>*</i><input name="연락처" required type="tel" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000"></label>
+        <label>이메일<input name="이메일" type="email" autocomplete="email"></label>
+      </div>
+      <label>분야 <i>*</i>
+        <select name="분야" required>
+          <option value="">선택해 주세요</option>
+          <option>소량 OEM·ODM 제조</option><option>패키지·인쇄</option><option>부자재·판촉물</option>
+          <option>포장·조립·키팅</option><option>보관·출고 (3PL)</option><option>기타</option>
+        </select>
+      </label>
+      <label>만들고 싶은 것 <i>*</i><input name="품목" required placeholder="예: 강아지 간식 파우치, 단상자 인쇄"></label>
+      <div class="row3">
+        <label>수량<input name="수량" placeholder="예: 1,000개"></label>
+        <label>예산<input name="예산" placeholder="예: 개당 500원"></label>
+        <label>희망 납기<input name="납기" placeholder="예: 6주 이내"></label>
+      </div>
+      <label>자세한 내용<textarea name="내용" rows="5" placeholder="규격, 재질, 참고 제품, 현재 거래처의 문제점 등"></textarea></label>
+      <label class="check"><input type="checkbox" name="동의" required> 상담을 위한 개인정보(성함, 연락처, 이메일) 수집·이용에 동의합니다. <i>*</i></label>
+      <button class="btn btn-block" type="submit">의뢰 보내기</button>
+      <p class="form-msg" role="status"></p>
+    </form>
+  </div>
+</section>
+
+<!-- SUPPLIER FORM -->
+<section class="sec" id="supplier">
+  <div class="wrap form-wrap">
+    <div class="form-head">
+      <span class="tag tag-s">공급자</span>
+      <h2>공급사 등록</h2>
+      <p>등록은 무료입니다. 맞는 의뢰가 들어오면 먼저 연락드립니다.</p>
+    </div>
+    <form class="form" data-kind="공급사" novalidate>
+      <div class="row2">
+        <label>업체명 <i>*</i><input name="업체명" required autocomplete="organization"></label>
+        <label>담당자 성함 <i>*</i><input name="이름" required autocomplete="name"></label>
+      </div>
+      <div class="row2">
+        <label>연락처 <i>*</i><input name="연락처" required type="tel" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000"></label>
+        <label>이메일<input name="이메일" type="email" autocomplete="email"></label>
+      </div>
+      <div class="row2">
+        <label>분야 <i>*</i>
+          <select name="분야" required>
+            <option value="">선택해 주세요</option>
+            <option>소량 OEM·ODM 제조</option><option>패키지·인쇄</option><option>부자재·판촉물</option>
+            <option>포장·조립·키팅</option><option>보관·출고 (3PL)</option><option>기타</option>
+          </select>
+        </label>
+        <label>지역<input name="지역" placeholder="예: 경기 파주"></label>
+      </div>
+      <label>가능한 품목·공정 <i>*</i><input name="공정" required placeholder="예: 파우치 충진·실링, 옵셋 인쇄"></label>
+      <div class="row2">
+        <label>최소 주문 수량 (MOQ)<input name="MOQ" placeholder="예: 500개"></label>
+        <label>월 생산 여력<input name="여력" placeholder="예: 월 2만 개 추가 가능"></label>
+      </div>
+      <label>업체 소개<textarea name="소개" rows="4" placeholder="주요 설비, 거래 이력, 강점 등"></textarea></label>
+      <label class="check"><input type="checkbox" name="동의" required> 연결을 위한 정보(업체명, 담당자, 연락처) 수집·이용, 수요자에게 명함 전달, 그리고 KB커넥트를 통해 소개받은 고객과 계약 시 성사 수수료가 발생하는 것에 동의합니다. <i>*</i></label>
+      <button class="btn btn-block btn-s" type="submit">공급사 등록하기</button>
+      <p class="form-msg" role="status"></p>
+    </form>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec sec-alt" id="faq">
+  <div class="wrap faq">
+    <h2 class="sec-title">자주 묻는 질문</h2>
+    <details><summary>아주 적은 수량도 의뢰할 수 있나요?</summary><p>네. 소량을 받아 주는 업체를 찾는 일이 저희가 가장 많이 하는 일입니다. 수량이 너무 적어 맞는 곳이 없으면 그 사실과 대안(최소 수량, 예상 단가)을 알려 드리고, 연결비는 받지 않습니다.</p></details>
+    <details><summary>업체를 찾는 데 얼마나 걸리나요?</summary><p>분야에 따라 다르지만 보통 3~7일 안에 명함과 초기 상담 내용을 전해 드립니다.</p></details>
+    <details><summary>연결 뒤에도 중간에서 관리해 주나요?</summary><p>기본은 연결까지입니다. 거래는 두 회사가 직접 하시고, 진행 중 문제가 생기면 언제든 연락 주세요. 생산 후 보관·출고가 필요하면 운영사인 KB물류에서 이어서 맡을 수 있습니다.</p></details>
+    <details><summary>연결된 업체와 거래하지 않아도 되나요?</summary><p>네. 상담 내용을 보시고 거래 여부는 자유롭게 정하시면 됩니다. 연결비는 업체 정보와 상담 내용을 받으실 때 한 번만 냅니다.</p></details>
+    <details><summary>공급사로 등록하면 비용이 드나요?</summary><p>등록과 의뢰 소개는 무료입니다. 소개받은 거래가 실제로 계약됐을 때만 성사 수수료를 받습니다.</p></details>
+    <details><summary>제 의뢰 내용이 다른 곳에 공개되나요?</summary><p>회사명·연락처는 공개하지 않습니다. '지금 찾고 있는 일' 게시판에는 품목과 수량처럼 업체를 찾는 데 필요한 정보만, 동의하신 경우에만 올립니다.</p></details>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <div>
+      <p class="logo"><span class="logo-mark">K</span><span data-site="brand">KB커넥트</span></p>
+      <p class="foot-sub">운영 <span data-site="operator">KB물류</span> · <span data-site="address"></span></p>
+    </div>
+    <div class="foot-contact">
+      <a data-href="tel" href="#">☎ <span data-site="phone"></span></a>
+      <a data-href="mail" href="#">✉ <span data-site="email"></span></a>
+      <a data-href="kakao" href="#" class="kakao" hidden>카카오톡 상담</a>
+    </div>
+  </div>
+</footer>
+
+<a href="#request" class="fab">의뢰하기</a>
+
+<script src="js/app.js"></script>
+</body>
+</html>

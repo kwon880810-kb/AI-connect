@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>KB커넥트 관리자</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/config.js"></script>
+<style>
+  body { background: var(--bg-alt); }
+  .adm { max-width: 1200px; margin: 0 auto; padding: 24px 16px 80px; }
+  .adm-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .adm-top h1 { font-size: 22px; margin-right: auto; }
+  .login { max-width: 380px; margin: 15vh auto; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tabs button, .filters select { font: inherit; border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 14px; cursor: pointer; }
+  .tabs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .cards { display: grid; gap: 12px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 8px; }
+  .card-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .card-top b { font-size: 17px; }
+  .card-top .when { margin-left: auto; color: var(--ink-3); font-size: 13px; }
+  .kv { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--ink-2); font-size: 14px; }
+  .kv span b { color: var(--ink); font-weight: 600; }
+  .body { white-space: pre-wrap; background: var(--bg-alt); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin: 0; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .ctl select, .ctl input { font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+  .ctl input { flex: 1; min-width: 180px; }
+  .st { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--blue-l); color: var(--blue); }
+  .st-신규 { background: #ffe9e9; color: #d33; }
+  .st-연결완료, .st-정산완료 { background: var(--green-l); color: var(--green); }
+  .st-보류 { background: #eee; color: #777; }
+  .empty { color: var(--ink-3); text-align: center; padding: 40px; }
+  .note { color: var(--ink-3); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="login form" id="login">
+  <h2>관리자 로그인</h2>
+  <p class="note">Apps Script의 ADMIN_TOKEN 값을 입력하세요. 이 기기에만 저장됩니다.</p>
+  <input id="token" type="password" placeholder="관리자 비밀번호">
+  <button class="btn btn-block" id="loginBtn">들어가기</button>
+  <p class="form-msg err" id="loginMsg"></p>
+</div>
+
+<div class="adm" id="app" hidden>
+  <div class="adm-top">
+    <h1>KB커넥트 접수 현황</h1>
+    <button class="btn btn-sm btn-ghost" id="reload">새로고침</button>
+    <button class="btn btn-sm btn-ghost" id="logout">로그아웃</button>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="tabs filters"><select id="filter"><option value="">전체 상태</option></select></div>
+  <div class="cards" id="list"></div>
+</div>
+
+<script>
+(function () {
+  const S = window.SITE;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  let token = "", db = null, tab = "의뢰";
+  try { token = localStorage.getItem("kbc_token") || ""; } catch (e) {}
+
+  if (!S.endpoint) { $("loginMsg").textContent = "js/config.js 의 endpoint 가 비어 있습니다. Apps Script를 먼저 연결하세요."; }
+
+  function load() {
+    return new Promise((resolve, reject) => {
+      const cb = "cb" + Date.now();
+      const s = document.createElement("script");
+      window[cb] = (res) => { delete window[cb]; s.remove(); resolve(res); };
+      s.onerror = () => { delete window[cb]; s.remove(); reject(new Error("load")); };
+      s.src = S.endpoint + "?token=" + encodeURIComponent(token) + "&callback=" + cb;
+      document.body.appendChild(s);
+    });
+  }
+
+  async function start() {
+    try {
+      const res = await load();
+      if (!res.ok) throw new Error(res.error);
+      db = res;
+      try { localStorage.setItem("kbc_token", token); } catch (e) {}
+      $("login").hidden = true; $("app").hidden = false;
+      $("filter").innerHTML = '<option value="">전체 상태</option>' + res.statuses.map((s) => `<option>${s}</option>`).join("");
+      render();
+    } catch (e) {
+      $("login").hidden = false; $("app").hidden = true;
+      $("loginMsg").textContent = e.message === "unauthorized" ? "비밀번호가 맞지 않습니다." : "불러오지 못했습니다. endpoint 주소를 확인하세요.";
+    }
+  }
+
+  function render() {
+    $("tabs").innerHTML = Object.keys(db.data).map((k) => {
+      const n = db.data[k].filter((r) => r["상태"] === "신규").length;
+      return `<button class="${k === tab ? "on" : ""}" data-tab="${k}">${k} ${db.data[k].length}건${n ? ` · 신규 ${n}` : ""}</button>`;
+    }).join("");
+    const f = $("filter").value;
+    const rows = db.data[tab].filter((r) => !f || r["상태"] === f).reverse();
+    const skip = ["_row", "접수일시", "상태", "메모", "내용", "소개", "회사", "업체명", "품목", "공정"];
+    $("list").innerHTML = rows.length ? rows.map((r) => `
+      <article class="card" data-row="${r._row}">
+        <div class="card-top">
+          <span class="st st-${esc(r["상태"])}">${esc(r["상태"] || "신규")}</span>
+          <b>${esc(r["품목"] || r["공정"])}</b>
+          <span>${esc(r["회사"] || r["업체명"])}</span>
+          <span class="when">${esc(r["접수일시"])}</span>
+        </div>
+        <div class="kv">${Object.keys(r).filter((k) => !skip.includes(k) && r[k] !== "").map((k) => {
+          const v = esc(r[k]);
+          const val = k === "연락처" ? `<a href="tel:${v.replace(/[^0-9+]/g, "")}">${v}</a>` : k === "이메일" ? `<a href="mailto:${v}">${v}</a>` : v;
+          return `<span>${k} <b>${val}</b></span>`;
+        }).join("")}</div>
+        ${(r["내용"] || r["소개"]) ? `<p class="body">${esc(r["내용"] || r["소개"])}</p>` : ""}
+        <div class="ctl">
+          <select class="setStatus">${db.statuses.map((s) => `<option ${s === r["상태"] ? "selected" : ""}>${s}</option>`).join("")}</select>
+          <input class="setMemo" placeholder="메모 (연결한 업체, 견적, 정산액 등)" value="${esc(r["메모"])}">
+          <button class="btn btn-sm save">저장</button>
+        </div>
+      </article>`).join("") : '<p class="empty">접수된 내용이 없습니다.</p>';
+  }
+
+  $("loginBtn").onclick = () => { token = $("token").value.trim(); start(); };
+  $("token").onkeydown = (e) => { if (e.key === "Enter") $("loginBtn").click(); };
+  $("reload").onclick = start;
+  $("logout").onclick = () => { try { localStorage.removeItem("kbc_token"); } catch (e) {} location.reload(); };
+  $("filter").onchange = render;
+  $("tabs").onclick = (e) => { const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; render(); } };
+  $("list").onclick = async (e) => {
+    if (!e.target.classList.contains("save")) return;
+    const card = e.target.closest(".card"), row = +card.dataset.row;
+    const status = card.querySelector(".setStatus").value, memo = card.querySelector(".setMemo").value;
+    e.target.disabled = true; e.target.textContent = "저장 중";
+    await fetch(S.endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "status", token, sheet: tab, row, status, memo }) });
+    const r = db.data[tab].find((x) => x._row === row); r["상태"] = status; r["메모"] = memo;
+    render();
+  };
+
+  if (token && S.endpoint) start();
+})();
+</script>
+</body>
+</html>
