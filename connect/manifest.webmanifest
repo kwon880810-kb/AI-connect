@@ -1,0 +1,17 @@
+{
+  "name": "윈-윈 커넥트 - 아이디어 현실화 플랫폼",
+  "short_name": "윈윈커넥트",
+  "description": "아이디어만 가져오세요. 만들어 줄 공장은 저희가 찾습니다.",
+  "lang": "ko",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1f4fd6",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

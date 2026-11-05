@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>관리자 | 윈-윈 커넥트</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="vendor/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/sb.js"></script>
+<script src="js/launch.js"></script>
+</head>
+<body class="rp-body">
+<header class="nav" id="nav"></header>
+<main class="page">
+  <div class="wrap" style="max-width:1280px">
+    <div class="page-head"><div><h1>관리자</h1><p>입금 확인 → 응답 확인·대리 입력 → 선정·리스트 전달 → 이의 처리 → 확정</p></div></div>
+    <div class="tabbar" id="tabs">
+      <button data-t="req" class="on">의뢰</button><button data-t="sup">공급자</button><button data-t="off">비회원사</button><button data-t="dis">이의신청</button><button data-t="price">요금 설정</button>
+    </div>
+    <div id="body"><p class="muted">불러오는 중…</p></div>
+  </div>
+</main>
+<footer class="foot" id="foot"></footer>
+
+<script>
+(async function () {
+  const { sb, S, esc, won, num, range, date, $, $$, toast, errMsg, catalog, requiredItems, requireLogin, reqStatus, badge, ans, rangeMark, signedUrl, SIDO } = APP;
+  const me = await requireLogin(["admin"]);
+  if (!me) return;
+  const cat = await catalog();
+  let tab = "req";
+  $("#tabs").onclick = (e) => { const b = e.target.closest("[data-t]"); if (!b) return; tab = b.dataset.t; $$("#tabs button").forEach((x) => x.classList.toggle("on", x === b)); show(); };
+  const show = () => ({ req: tabReq, sup: tabSup, off: tabOff, dis: tabDis, price: tabPrice })[tab]();
+  const call = async (p, okMsg) => { const { error } = await p; if (error) { toast(errMsg(error), "err"); return false; } if (okMsg) toast(okMsg); return true; };
+
+  // ======================= 의뢰 =======================
+  let reqs = [], reqFilter = "action", curReq = null;
+  const needsAction = (r) => (r.status === "draft" && r.submitted_at) || ["open", "selecting", "disputed", "awaiting_deposit"].includes(r.status) || (r.status === "delivered" && new Date(r.verify_until) < new Date());
+  async function tabReq() {
+    const { data, error } = await sb.from("requests").select("*").order("created_at", { ascending: false });
+    if (tab !== "req") return;
+    if (error) return ($("#body").innerHTML = `<p class="muted">${esc(errMsg(error))}</p>`);
+    reqs = data;
+    const shown = reqs.filter((r) => reqFilter === "all" || (reqFilter === "action" ? needsAction(r) : reqStatus(r)[0] === reqFilter));
+    $("#body").innerHTML = `
+      <div class="tabbar" id="rf">${[["action", "처리 필요"], ["all", "전체"], ["입금 대기", "접수비 대기"], ["착수금 입금 대기", "착수금 대기"], ["공급자 응답 받는 중", "응답 중"], ["리스트 전달 · 검증 중", "검증 중"], ["이의 처리 중", "이의"], ["확정", "확정"]]
+        .map(([k, l]) => `<button data-f="${k}" class="${reqFilter === k ? "on" : ""}">${l} ${reqs.filter((r) => k === "all" || (k === "action" ? needsAction(r) : reqStatus(r)[0] === k)).length}</button>`).join("")}</div>
+      <div class="split"><div class="rows" id="rl">${shown.map((r) => `
+        <button class="row-card ${curReq === r.id ? "on" : ""}" data-id="${r.id}"><div class="row-top">${badge(reqStatus(r))}<span class="muted">${esc(r.code || "작성 중")}</span><span class="right muted">${date(r.created_at)}</span></div>
+          <b>${esc(r.title)}</b><div class="row-meta">${r.stage ? `<span>${esc((LAUNCH.PHASES.find((p) => p.id === r.phase) || {}).label || "")} · ${esc(LAUNCH.STAGE_NAME[r.stage] || "")}</span>` : ""}<span>${esc(cat.catName(r.major_id))}</span><span>${r.fee_type === "followup" ? "기존 파트너 문의" : r.kind === "direct" ? "지정" : "일반"} · ${r.supplier_count}곳</span>${r.amount_total ? `<span>${won(r.amount_total)}</span>` : ""}</div></button>`).join("") || '<div class="panel muted">해당하는 의뢰가 없습니다.</div>'}</div>
+        <div id="rd"><div class="panel muted">의뢰를 고르세요.</div></div></div>`;
+    $("#rf").onclick = (e) => { const b = e.target.closest("[data-f]"); if (b) { reqFilter = b.dataset.f; tabReq(); } };
+    $("#rl").onclick = (e) => { const b = e.target.closest("[data-id]"); if (b) { curReq = b.dataset.id; $$("#rl .row-card").forEach((x) => x.classList.toggle("on", x === b)); openReq(curReq); } };
+    if (curReq && reqs.some((r) => r.id === curReq)) openReq(curReq);
+  }
+
+  async function openReq(id) {
+    const r = reqs.find((x) => x.id === id);
+    const d = $("#rd"); d.innerHTML = '<div class="panel muted">불러오는 중…</div>';
+    const [prof, items, files, rank, resps, pays, targets] = await Promise.all([
+      sb.from("profiles").select("*").eq("id", r.demander_id).maybeSingle(),
+      sb.from("request_items").select("*").eq("request_id", id),
+      sb.from("request_files").select("*").eq("request_id", id).order("sort"),
+      sb.rpc("rank_responses", { p_request: id }),
+      sb.from("responses").select("*").eq("request_id", id),
+      sb.from("payments").select("*").eq("request_id", id),
+      sb.from("request_targets").select("*").eq("request_id", id),
+    ]);
+    if (curReq !== id || tab !== "req") return;
+    const p = prof.data || {};
+    const itemLabel = (iid) => (cat.items.find((x) => x.id === iid) || {}).label || "";
+    const allResp = resps.data || [];
+    let html = `<div class="panel">
+      <div class="row-top">${badge(reqStatus(r))}<span class="muted">${esc(r.code || "")}</span>${r.kind === "direct" ? '<span class="sbadge s-amber">지정 의뢰</span>' : ""}</div>
+      <h2 style="margin-top:8px">${esc(r.title)}</h2>
+      ${r.context ? `<div class="note info" style="margin-bottom:10px"><b>출시 프로젝트</b> ${esc(r.context)}${r.stage ? ` · ${esc((LAUNCH.PHASES.find((p) => p.id === r.phase) || {}).label || "")} ${esc(LAUNCH.STAGE_NAME[r.stage] || "")}` : ""}</div>` : ""}
+      <p class="muted" style="margin:0 0 8px">요금: ${r.fee_type === "first" ? "첫 파트너 찾기" : r.fee_type === "continue" ? "이어하기" : r.fee_type === "followup" ? "기존 파트너 문의 (무료)" : "이전 방식"} · 접수 ${won(r.intake_amount ?? r.amount_total)}${r.deposit_amount ? ` · 착수금 ${won(r.deposit_amount)}${r.deposit_paid_at ? " (입금 확인)" : ""}` : ""}${r.coupon_id ? " · 쿠폰 사용" : ""}</p>
+      <dl class="kv-grid">
+        <div><dt>수요자</dt><dd>${esc(p.name || "")} ${p.company ? "· " + esc(p.company) : ""}</dd></div>
+        <div><dt>연락처</dt><dd>${esc(p.phone || "-")}<br><span style="font-weight:400">${esc(p.email || "")}</span></dd></div>
+        <div><dt>분야</dt><dd>${esc(cat.catName(r.major_id))}${r.minor_id ? " › " + esc(cat.catName(r.minor_id)) : ""}</dd></div>
+        <div><dt>수량</dt><dd>${range(r.qty_min, r.qty_max, "개")}</dd></div>
+        <div><dt>단가</dt><dd>${range(r.price_min, r.price_max, "원")}</dd></div>
+        <div><dt>납기</dt><dd>${range(r.due_min_days, r.due_max_days, "일")}</dd></div>
+        <div><dt>금액</dt><dd>${won(r.amount_total)}</dd></div>
+        <div><dt>응답 마감</dt><dd>${date(r.respond_until, true)}</dd></div>
+      </dl>
+      ${(items.data || []).length ? `<h3>추가 조건</h3><div class="chips">${items.data.map((x) => `<span class="chip">${esc(itemLabel(x.item_id))}</span>`).join("")}</div>` : ""}
+      ${r.description ? `<h3>자세한 내용</h3><p style="white-space:pre-wrap;margin:0">${esc(r.description)}</p>` : ""}
+      ${(files.data || []).length ? `<h3>첨부</h3><div class="files">${files.data.map((x) => `<div class="file-row"><a class="fname" href="#" data-file="${esc(x.path)}" style="text-decoration:underline">${esc(x.file_name)}</a><span class="sbadge ${x.visibility === "all" ? "s-blue" : "s-green"}">${x.visibility === "all" ? "모두 공개" : "선정사 공개"}</span></div>`).join("")}</div>` : ""}
+    </div>`;
+
+    if (r.status === "awaiting_deposit") {
+      html += `<div class="panel"><h2>착수금 입금 확인</h2><p>착수금 <b>${won(r.deposit_amount)}</b> · 선정은 끝났고, 입금이 확인되면 수요자에게 업체명·연락처가 공개되고 7일 검증기간이 시작됩니다.</p>
+        <button class="btn btn-sm" id="confirmDeposit">착수금 입금 확인 → 연락처 공개</button></div>`;
+    }
+    if (r.status === "draft" && r.submitted_at) {
+      html += `<div class="panel"><h2>${r.amount_total ? "접수비 입금 확인" : "공개 승인 (0원)"}</h2><p>${r.amount_total ? `접수 시 금액 <b>${won(r.amount_total)}</b>` : `<b>0원</b> · ${r.fee_type === "followup" ? "기존 파트너 문의" : "쿠폰 적용"}`} · 접수 ${date(r.submitted_at, true)}</p>
+        ${r.coupon_id ? '<p class="muted" style="margin:0 0 8px">쿠폰 의뢰입니다. 무료 기간에는 전화로 진지한 의뢰인지 확인한 뒤 공개해 주세요.</p>' : ""}
+        <div class="row2"><label class="muted">결제 방법<input id="payPg" value="bank" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px"></label>
+        <label class="muted">거래번호·입금자명<input id="payTid" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px"></label></div>
+        <button class="btn btn-sm" id="confirmPay" style="margin-top:10px">${r.amount_total ? "입금 확인 → 파트너에게 공개" : "확인 → 파트너에게 공개"}</button></div>`;
+    }
+    if (["open", "selecting", "awaiting_deposit", "delivered", "disputed", "confirmed"].includes(r.status)) {
+      const rk = rank.data || [];
+      const canSelect = ["open", "selecting"].includes(r.status);
+      html += `<div class="panel"><h2>응답 순위 <span class="muted" style="font-weight:400;font-size:14px">필수 ✕ 업체는 아래로 · 적합도 70% + 신뢰도 30%</span></h2>
+        ${r.kind === "direct" ? `<p class="muted" style="margin:0 0 8px">지정 공급사 ${(targets.data || []).length}곳 · 응답 대기 ${allResp.filter((x) => x.status === "invited").length}곳 (무응답·필수 불일치는 그 업체분 환불)</p>` : ""}
+        ${rk.length ? `<div class="table-wrap"><table class="data"><tr>${canSelect ? "<th>선정</th>" : ""}<th>업체</th><th>적합도</th><th>신뢰도</th><th>순위점수</th><th>필수</th><th>수량</th><th>단가</th><th>납기</th><th>상태</th><th></th></tr>
+          ${rk.map((x) => { const rs = allResp.find((y) => y.id === x.response_id) || {}; return `<tr>
+            ${canSelect ? `<td><input type="checkbox" data-sel="${x.response_id}" ${x.has_required_x ? "" : ""}></td>` : ""}
+            <td><b>${esc(x.supplier_label)}</b>${rs.offline_supplier_id ? ' <span class="sbadge s-gray">대리</span>' : ""}</td>
+            <td>${x.fit_pct == null ? "-" : num(x.fit_pct) + "%"}</td><td>${x.trust ?? "-"}</td><td><b>${num(x.rank_score)}</b></td>
+            <td>${x.has_required_x ? ans("X") : ans("O")}</td>
+            <td>${range(rs.qty_min, rs.qty_max)} ${ans(rangeMark(r.qty_min, r.qty_max, rs.qty_min, rs.qty_max))}</td>
+            <td>${range(rs.price_min, rs.price_max)} ${ans(rangeMark(r.price_min, r.price_max, rs.price_min, rs.price_max))}</td>
+            <td>${range(rs.due_min_days, rs.due_max_days)} ${ans(rangeMark(r.due_min_days, r.due_max_days, rs.due_min_days, rs.due_max_days))}</td>
+            <td>${esc({ invited: "응답 대기", submitted: "제출", selected: "선정", not_selected: "미선정" }[rs.status] || rs.status || "")}</td><td><button class="btn btn-sm btn-ghost" data-view="${x.response_id}">보기</button></td></tr>`; }).join("")}</table></div>` : '<p class="muted">아직 응답이 없습니다. 비회원 공급자에게 연락해 대리 입력할 수 있습니다.</p>'}
+        <div id="respView"></div>
+        ${canSelect ? `<div class="ctl" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          ${r.status === "open" ? '<button class="btn btn-sm btn-ghost" id="closeResp">응답 마감 (선정 중으로)</button>' : ""}
+          <button class="btn btn-sm btn-ghost" id="proxyBtn">비회원 공급자 대리 입력</button>
+          <button class="btn btn-sm" id="deliverBtn">선택한 업체로 리스트 전달</button></div>` : ""}
+        <div id="proxyBox"></div></div>`;
+    }
+    if (["delivered", "disputed"].includes(r.status)) {
+      html += `<div class="panel"><h2>검증기간</h2><p>리스트 전달 ${date(r.delivered_at, true)} · 검증 종료 ${date(r.verify_until, true)}</p>
+        <button class="btn btn-sm" id="confirmReq">확정 처리</button> <span class="muted">처리 중인 이의신청이 없을 때만 확정됩니다. 문제없이 통과한 공급자는 신뢰도가 회복됩니다(+1).</span></div>`;
+    }
+    if ((pays.data || []).length) {
+      const pay = pays.data[0];
+      const rf = await sb.from("refunds").select("*").eq("payment_id", pay.id);
+      const refunded = (rf.data || []).reduce((s, x) => s + x.amount, 0);
+      html += `<div class="panel"><h2>결제·환불</h2><p>결제 ${won(pay.amount)} (${esc(pay.pg)} ${esc(pay.pg_tid || "")}) · ${date(pay.paid_at, true)} · 환불 합계 ${won(refunded)}</p>
+        ${(rf.data || []).map((x) => `<p class="muted" style="margin:2px 0">${date(x.created_at)} · ${won(x.amount)} · ${esc(x.reason)}</p>`).join("")}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><input id="rfAmt" type="number" placeholder="환불 금액" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px;width:140px">
+          <select id="rfReason" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px"><option value="no_response">지정사 무응답</option><option value="direct_mismatch">지정사 필수 불일치</option><option value="shortfall">업체 부족</option><option value="dispute">이의신청 인정</option></select>
+          <button class="btn btn-sm btn-ghost" id="rfBtn" data-pay="${pay.id}">환불 기록</button></div>
+        <p class="muted" style="margin:6px 0 0">업체분 환불액 = 결제금액 × (환불 업체 수 ÷ ${r.supplier_count}) = 1곳당 ${won(Math.floor(pay.amount / r.supplier_count))}. 실제 환불(카드 취소·계좌 송금)은 따로 처리하고 여기에 기록합니다.</p></div>`;
+    }
+    d.innerHTML = html;
+
+    d.querySelectorAll("[data-file]").forEach((a) => (a.onclick = async (e) => { e.preventDefault(); const u = await signedUrl(a.dataset.file); if (u) window.open(u, "_blank"); }));
+    const on = (sel, fn) => { const el = d.querySelector(sel); if (el) el.onclick = fn; };
+    on("#confirmDeposit", async () => { if (await call(sb.rpc("admin_confirm_deposit", { p_request: id }), "착수금을 확인하고 연락처를 공개했습니다")) tabReq(); });
+    on("#confirmPay", async () => { if (await call(sb.rpc("admin_confirm_payment", { p_request: id, p_pg: $("#payPg").value || "bank", p_tid: $("#payTid").value || null }), "입금 확인, 공급자에게 공개했습니다")) tabReq(); });
+    on("#closeResp", async () => { if (await call(sb.from("requests").update({ status: "selecting" }).eq("id", id), "응답을 마감했습니다")) tabReq(); });
+    on("#deliverBtn", async () => {
+      const ids = $$("[data-sel]:checked", d).map((x) => x.dataset.sel);
+      if (!ids.length) return toast("선정할 업체를 고르세요", "err");
+      if (ids.length !== r.supplier_count && !confirm(`요청 업체 수는 ${r.supplier_count}곳인데 ${ids.length}곳을 골랐습니다. 이대로 전달할까요? (부족분은 환불 기록 필요)`)) return;
+      if (await call(sb.rpc("admin_deliver", { p_request: id, p_selected: ids }), "리스트를 전달했습니다")) tabReq();
+    });
+    on("#confirmReq", async () => { if (await call(sb.rpc("admin_confirm_request", { p_request: id }), "확정했습니다")) tabReq(); });
+    on("#rfBtn", async (e) => {
+      const amt = +$("#rfAmt").value; if (!amt) return toast("환불 금액을 입력하세요", "err");
+      if (await call(sb.from("refunds").insert({ payment_id: e.target.dataset.pay, amount: amt, reason: $("#rfReason").value }), "환불을 기록했습니다")) openReq(id);
+    });
+    d.querySelectorAll("[data-view]").forEach((b) => (b.onclick = () => viewResp(r, allResp.find((x) => x.id === b.dataset.view))));
+    on("#proxyBtn", () => proxyForm(r, items.data || []));
+  }
+
+  async function viewResp(r, x) {
+    const [a, s, o] = await Promise.all([
+      sb.from("response_answers").select("*").eq("response_id", x.id),
+      x.supplier_id ? sb.from("suppliers").select("*").eq("id", x.supplier_id).maybeSingle() : { data: null },
+      x.offline_supplier_id ? sb.from("offline_suppliers").select("*").eq("id", x.offline_supplier_id).maybeSingle() : { data: null },
+    ]);
+    const sup = s.data || o.data || {};
+    const itemLabel = (iid) => (cat.items.find((y) => y.id === iid) || {}).label || "";
+    $("#respView").innerHTML = `<div class="panel" style="margin-top:12px;background:var(--bg-alt)">
+      <h3 style="margin-top:0">${esc(sup.company_name || "")} <span class="muted" style="font-weight:400">${esc(sup.contact_name || "")} ${esc(sup.contact_phone || "")} · ${esc(sup.region_sido || "")}</span></h3>
+      <ul class="rp-checks">${(a.data || []).map((y) => `<li><span class="rp-q">${esc(itemLabel(y.item_id))}${y.checked_via ? ` <span class="muted">(${esc(y.checked_via)} 확인)</span>` : ""}</span>${ans(y.value)}${y.note ? `<span class="rp-note">${esc(y.note)}</span>` : ""}</li>`).join("")}</ul>
+      ${x.sample_cost ? `<p class="rp-memo"><b>샘플</b> ${esc(x.sample_cost)}</p>` : ""}${x.memo ? `<p class="rp-memo"><b>메모</b> ${esc(x.memo)}</p>` : ""}
+      <p class="muted" style="margin:6px 0 0">인허가 서약 ${x.license_pledge ? "✓" : "✕"} · 제출 ${date(x.submitted_at, true)}</p></div>`;
+  }
+
+  // 비회원 공급자 대리 입력 (전화로 확인한 내용)
+  function proxyForm(r, reqItems) {
+    const qItems = requiredItems(cat, r.major_id).concat(cat.items.filter((x) => reqItems.some((y) => y.item_id === x.id)));
+    $("#proxyBox").innerHTML = `<form class="panel form" id="pxForm" novalidate style="margin-top:12px;gap:12px;background:var(--bg-alt)">
+      <h3 style="margin:0">비회원 공급자 대리 입력</h3>
+      <label>등록된 비회원사에서 고르기<select name="offline_id"><option value="">새 업체로 입력</option></select></label>
+      <div class="row2"><label>업체명 <i>*</i><input name="company_name" required></label><label>지역<select name="region_sido"><option value="">선택</option>${SIDO.map((s) => `<option>${s}</option>`).join("")}</select></label></div>
+      <div class="row2"><label>담당자<input name="contact_name"></label><label>연락처 <i>*</i><input name="contact_phone" required></label></div>
+      <div class="row3">
+        <label>수량<div class="range-in"><input name="qty_min" type="number" required placeholder="최소"><span>~</span><input name="qty_max" type="number" placeholder="최대"></div></label>
+        <label>단가<div class="range-in"><input name="price_min" type="number" required placeholder="최소"><span>~</span><input name="price_max" type="number" placeholder="최대"></div></label>
+        <label>생산 기간(일)<div class="range-in"><input name="due_min" type="number" required placeholder="최소"><span>~</span><input name="due_max" type="number" placeholder="최대"></div></label>
+      </div>
+      <label>확인 방법<select name="via"><option>전화</option><option>문자</option><option>방문</option><option>이메일</option></select></label>
+      ${qItems.map((x) => `<div class="ans-edit" data-item="${x.id}"><span>${esc(x.label)}</span><span class="seg">${["O", "P", "X"].map((k) => `<button type="button" data-a="${k}" class="${{ O: "a-o", P: "a-p", X: "a-x" }[k]}">${{ O: "● 가능", P: "▲ 조건부", X: "✕ 불가" }[k]}</button>`).join("")}</span><input type="text" data-note placeholder="메모"></div>`).join("")}
+      <label>공장 메모 (수요자에게 보임)<textarea name="memo" rows="2"></textarea></label>
+      <button class="btn btn-sm" type="submit">대리 입력 저장</button></form>`;
+    const f = $("#pxForm");
+    sb.from("offline_suppliers").select("id,company_name,contact_name,contact_phone,region_sido,category_ids").is("linked_supplier_id", null).order("company_name").then(({ data }) => {
+      const fit = (o) => (o.category_ids || []).some((id) => id === r.major_id || (cat.categories.find((c) => c.id === id) || {}).parent_id === r.major_id);
+      const offs = (data || []).sort((a, b) => fit(b) - fit(a));
+      f.offline_id.insertAdjacentHTML("beforeend", offs.map((o) => `<option value="${o.id}">${fit(o) ? "★ " : ""}${esc(o.company_name)} · ${esc(o.region_sido || "")} ${esc(o.contact_phone || "")}</option>`).join(""));
+      f.offline_id.onchange = () => {
+        const o = offs.find((x) => x.id === f.offline_id.value) || {};
+        f.company_name.value = o.company_name || ""; f.contact_name.value = o.contact_name || ""; f.contact_phone.value = o.contact_phone || ""; f.region_sido.value = o.region_sido || "";
+      };
+    });
+    f.querySelectorAll(".seg").forEach((sg) => (sg.onclick = (e) => { const b = e.target.closest("[data-a]"); if (b) sg.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); }));
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const n = (k) => (f[k].value === "" ? null : +f[k].value);
+      if (["company_name", "contact_phone", "qty_min", "price_min", "due_min"].some((k) => !f[k].value)) return toast("필수 칸을 채우세요", "err");
+      const ans = $$(".ans-edit", f).map((el) => ({ item_id: +el.dataset.item, value: (el.querySelector(".seg .on") || { dataset: { a: "N" } }).dataset.a, note: el.querySelector("[data-note]").value || null }));
+      try {
+        const o = f.offline_id.value ? { data: { id: f.offline_id.value } }
+          : await sb.from("offline_suppliers").insert({ company_name: f.company_name.value, contact_name: f.contact_name.value || null, contact_phone: f.contact_phone.value, region_sido: f.region_sido.value || null, listed: false, source: "network", created_by: me.user.id }).select("id").single();
+        if (o.error) throw o.error;
+        const x = await sb.from("responses").insert({ request_id: r.id, offline_supplier_id: o.data.id, proxy_by: me.user.id, status: "submitted", submitted_at: new Date().toISOString(), license_pledge: true,
+          qty_min: n("qty_min"), qty_max: n("qty_max") ?? n("qty_min"), price_min: n("price_min"), price_max: n("price_max") ?? n("price_min"), due_min_days: n("due_min"), due_max_days: n("due_max") ?? n("due_min"), memo: f.memo.value || null }).select("id").single();
+        if (x.error) throw x.error;
+        const now = new Date().toISOString();
+        const a = await sb.from("response_answers").insert(ans.map((y) => ({ ...y, response_id: x.data.id, checked_at: now, checked_via: f.via.value })));
+        if (a.error) throw a.error;
+        toast("대리 입력을 저장했습니다"); openReq(r.id);
+      } catch (err) { toast(errMsg(err), "err"); }
+    };
+  }
+
+  // ======================= 공급자 =======================
+  async function tabSup() {
+    const { data, error } = await sb.from("suppliers").select("*").order("created_at", { ascending: false });
+    if (error) return ($("#body").innerHTML = `<p class="muted">${esc(errMsg(error))}</p>`);
+    const scores = await Promise.all(data.map((s) => sb.rpc("trust_score_of", { p_supplier: s.id })));
+    if (tab !== "sup") return;
+    $("#body").innerHTML = `<div class="note info" style="margin-bottom:12px">사업자 확인: 국세청 홈택스 '사업자등록 상태조회'에서 번호를 조회해 계속사업자인지 확인한 뒤 '확인 완료'를 누르세요. (국세청 API 연동 전 임시 절차)</div>
+      <div class="table-wrap"><table class="data"><tr><th>업체</th><th>사업자번호</th><th>담당·연락처</th><th>지역</th><th>가입</th><th>신뢰도</th><th>상태</th><th></th></tr>
+      ${data.map((s, i) => `<tr><td><b>${esc(s.company_name)}</b><br><span class="muted">${esc(s.ceo_name || "")}</span></td>
+        <td>${esc(s.biz_no.replace(/(\d{3})(\d{2})(\d{5})/, "$1-$2-$3"))}</td><td>${esc(s.contact_name || "")}<br>${esc(s.contact_phone || "")}</td>
+        <td>${esc(s.region_sido || "")}</td><td>${date(s.created_at)}</td><td>${scores[i].data ?? "-"}</td>
+        <td>${s.biz_verified_at ? '<span class="sbadge s-green">확인 완료</span>' : '<span class="sbadge s-amber">확인 대기</span>'} ${s.is_restricted ? '<span class="sbadge s-red">응답 제한</span>' : ""}</td>
+        <td style="white-space:nowrap">${s.biz_verified_at ? "" : `<button class="btn btn-sm" data-verify="${s.id}">확인 완료</button>`}
+          <button class="btn btn-sm btn-ghost" data-restrict="${s.id}" data-v="${s.is_restricted ? "0" : "1"}">${s.is_restricted ? "제한 해제" : "응답 제한"}</button></td></tr>`).join("") || '<tr><td colspan="8" class="muted">가입한 공급자가 없습니다.</td></tr>'}</table></div>`;
+    $$("[data-verify]").forEach((b) => (b.onclick = async () => { if (await call(sb.from("suppliers").update({ biz_verified_at: new Date().toISOString() }).eq("id", b.dataset.verify), "사업자 확인을 완료했습니다")) tabSup(); }));
+    $$("[data-restrict]").forEach((b) => (b.onclick = async () => { if (await call(sb.from("suppliers").update({ is_restricted: b.dataset.v === "1" }).eq("id", b.dataset.restrict), "변경했습니다")) tabSup(); }));
+  }
+
+  // ======================= 이의신청 =======================
+  const PENALTY = { required: ["required_mismatch", -10], condition: ["condition_mismatch", -3], no_contact: ["no_contact", -15] };
+  async function tabDis() {
+    const { data, error } = await sb.from("disputes").select("*").order("created_at", { ascending: false });
+    if (error) return ($("#body").innerHTML = `<p class="muted">${esc(errMsg(error))}</p>`);
+    const respIds = [...new Set(data.map((x) => x.response_id))], reqIds = [...new Set(data.map((x) => x.request_id))];
+    const [rs, rq] = await Promise.all([
+      respIds.length ? sb.from("responses").select("*").in("id", respIds) : { data: [] },
+      reqIds.length ? sb.from("requests").select("id, code, title").in("id", reqIds) : { data: [] },
+    ]);
+    const supIds = (rs.data || []).map((x) => x.supplier_id).filter(Boolean);
+    const sp = supIds.length ? await sb.from("suppliers").select("id, company_name").in("id", supIds) : { data: [] };
+    if (tab !== "dis") return;
+    const KIND = { required: "필수 항목 불일치", condition: "추가 조건 불일치", no_contact: "연락 두절" };
+    const ST = { open: ["접수", "s-amber"], awaiting_opinion: ["의견서 대기", "s-blue"], accepted: ["인정", "s-green"], rejected: ["불인정", "s-gray"] };
+    $("#body").innerHTML = data.length ? `<div class="rows">${data.map((x) => {
+      const resp = (rs.data || []).find((y) => y.id === x.response_id) || {};
+      const sup = (sp.data || []).find((y) => y.id === resp.supplier_id) || {};
+      const req = (rq.data || []).find((y) => y.id === x.request_id) || {};
+      const late = x.status === "awaiting_opinion" && !x.opinion && x.opinion_due && new Date(x.opinion_due) < new Date();
+      return `<div class="panel"><div class="row-top"><span class="sbadge ${ST[x.status][1]}">${ST[x.status][0]}</span><b>${esc(req.code)} ${esc(req.title)}</b><span class="right muted">${date(x.created_at, true)}</span></div>
+        <p style="margin:8px 0 4px"><b>${esc(sup.company_name || "비회원 공급자")}</b> · ${KIND[x.kind]}</p>
+        <p style="white-space:pre-wrap;margin:0">${esc(x.claim)}</p>
+        ${x.opinion ? `<div class="note info" style="margin-top:8px"><b>공급자 의견</b> (${date(x.opinion_at, true)})<br>${esc(x.opinion)}</div>` : late ? '<div class="note" style="margin-top:8px">의견서 기한이 지났습니다 (미제출 시 -5 추가)</div>' : ""}
+        ${x.status === "open" ? `<button class="btn btn-sm" data-ask="${x.id}" style="margin-top:10px" ${resp.supplier_id ? "" : "disabled"}>공급자에게 의견서 요청 (3영업일)</button> ${resp.supplier_id ? "" : '<span class="muted">비회원 공급자는 전화로 확인 후 바로 판정하세요</span>'}` : ""}
+        ${["open", "awaiting_opinion"].includes(x.status) ? `
+          <form class="form" data-decide="${x.id}" data-sup="${resp.supplier_id || ""}" data-kind="${x.kind}" data-late="${late ? 1 : 0}" style="padding:12px 0 0;border:0;gap:10px">
+            <div class="row3"><label>판정<select name="status"><option value="accepted">인정</option><option value="rejected">불인정</option></select></label>
+              <label>수요자 선택<select name="remedy"><option value="refund">환불</option><option value="replace">대체 업체</option><option value="">해당 없음</option></select></label>
+              <label>공급자 책임<select name="fault"><option value="1">있음 (점수 차감 ${PENALTY[x.kind][1]})</option><option value="0">없음 (불가항력·수요자 조건 변경)</option></select></label></div>
+            <label>판정 메모 (수요자에게 보임)<input name="note"></label>
+            <button class="btn btn-sm" type="submit">판정 저장</button></form>` : `<p class="muted" style="margin:8px 0 0">판정: ${esc(x.decision_note || "")} ${x.remedy ? "· " + (x.remedy === "refund" ? "환불" : "대체 업체") : ""} ${x.supplier_fault ? "· 공급자 책임" : ""}</p>`}
+      </div>`; }).join("")}</div>` : '<div class="panel muted">이의신청이 없습니다.</div>';
+    $$("[data-ask]").forEach((b) => (b.onclick = async () => {
+      const due = new Date(Date.now() + 3 * 86400000).toISOString();
+      if (await call(sb.from("disputes").update({ status: "awaiting_opinion", opinion_due: due }).eq("id", b.dataset.ask), "의견서를 요청했습니다")) tabDis();
+    }));
+    $$("[data-decide]").forEach((f) => (f.onsubmit = async (e) => {
+      e.preventDefault();
+      const accepted = f.status.value === "accepted", fault = f.fault.value === "1" && accepted;
+      const ok = await call(sb.from("disputes").update({ status: f.status.value, remedy: accepted ? f.remedy.value || null : null, supplier_fault: fault,
+        decision_note: f.note.value || null, decided_by: me.user.id, decided_at: new Date().toISOString() }).eq("id", f.dataset.decide));
+      if (!ok) return;
+      if (fault && f.dataset.sup) {
+        const [reason, delta] = PENALTY[f.dataset.kind];
+        const ev = [{ supplier_id: f.dataset.sup, delta, reason, dispute_id: f.dataset.decide }];
+        if (f.dataset.late === "1") ev.push({ supplier_id: f.dataset.sup, delta: -5, reason: "opinion_late", dispute_id: f.dataset.decide });
+        await call(sb.from("score_events").insert(ev));
+      }
+      toast("판정을 저장했습니다. 환불이면 의뢰 화면에서 환불을 기록하세요."); tabDis();
+    }));
+  }
+
+  // ======================= 비회원사 (공공데이터·운영사 네트워크) =======================
+  const CSV_COLS = ["업체명", "사업자번호", "분류", "공정", "지역", "소개", "담당자", "연락처", "출처구분", "출처명", "수집일", "활동확인일", "공개"];
+  const majorOf = (id) => (cat.categories.find((c) => c.id === id) || {}).parent_id || id;
+  const catByName = (name) => {
+    const n = name.trim(); if (!n) return null;
+    const [a, b] = n.split(">").map((x) => x.trim());
+    if (b) { const m = cat.majors.find((x) => x.name === a); return m ? cat.minorsOf(m.id).find((x) => x.name === b) || null : null; }
+    return cat.categories.find((x) => x.name === n || (x.aliases || []).includes(n)) || null;
+  };
+  const catLabel = (id) => { const c = cat.categories.find((x) => x.id === id); if (!c) return ""; return c.parent_id ? cat.catName(c.parent_id) + ">" + c.name : c.name; };
+  function parseCSV(text) {
+    const out = []; let row = [], cell = "", q = false;
+    text = text.replace(/^﻿/, "");
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === ",") { row.push(cell); cell = ""; }
+      else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(cell); out.push(row); row = []; cell = ""; }
+      else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); out.push(row); }
+    return out.filter((r) => r.some((c) => c.trim()));
+  }
+  const csvCell = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  const download = (name, text) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+  const isoDate = (v) => { v = (v || "").trim().replace(/[./]/g, "-"); return /^\d{4}-\d{1,2}-\d{1,2}$/.test(v) ? v : null; };
+  let offs = [], offQ = "", offKind = "", offSrc = "", offEdit = null;
+
+  async function tabOff() {
+    const { data, error } = await sb.from("offline_suppliers").select("*").order("updated_at", { ascending: false });
+    if (tab !== "off") return;
+    if (error) return ($("#body").innerHTML = `<p class="muted">${esc(errMsg(error))}</p>`);
+    offs = data.map((o) => Object.assign(o, { kinds: LAUNCH.kindsOf((o.category_ids || []).map(majorOf)) }));
+    const dOn = cat.pricing.direct_request_enabled === 1;
+    $("#body").innerHTML = `
+      <div class="note info" style="margin-bottom:12px">공공데이터나 운영사 네트워크로 미리 등록하는 업체입니다. 공개로 두면 '제작 파트너 둘러보기'에 <b>비회원사</b>로 보이며, 업체명·연락처는 공개되지 않습니다. 같은 사업자번호로 가입하면 회원사로 자동 연결됩니다.
+        <br>지정 의뢰: <b>${dOn ? "켜짐" : "꺼짐"}</b> (요금 설정 탭의 direct_request_enabled, 1=켬). 비회원사는 켜져 있어도 지정할 수 없습니다.
+        <br>활동이 확인된 업체만 공개하세요. 제외 요청이 오면 '제외 요청'으로 바꾸면 바로 숨겨지고 다시 올려도 공개되지 않습니다.</div>
+      <div class="row-top" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <input id="offQ" placeholder="업체명·사업자번호·지역 검색" value="${esc(offQ)}" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:220px">
+        <select id="offKind" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:7px"><option value="">종류 전체</option>${LAUNCH.KIND_ORDER.map((k) => `<option ${offKind === k ? "selected" : ""}>${k}</option>`).join("")}</select>
+        <select id="offSrc" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:7px"><option value="">출처 전체</option><option value="public" ${offSrc === "public" ? "selected" : ""}>공공데이터</option><option value="network" ${offSrc === "network" ? "selected" : ""}>운영사 네트워크</option></select>
+        <span class="right" style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm" id="offNew">업체 추가</button>
+          <button class="btn btn-sm btn-ghost" id="offTpl">CSV 양식</button>
+          <label class="btn btn-sm btn-ghost" style="cursor:pointer">CSV 올리기<input type="file" id="offCsv" accept=".csv,text/csv" hidden></label>
+          <button class="btn btn-sm btn-ghost" id="offExp">CSV 내려받기</button>
+        </span>
+      </div>
+      <div id="offForm"></div>
+      <div class="table-wrap" id="offList"></div>`;
+    $("#offQ").oninput = (e) => { offQ = e.target.value; offRender(); };
+    $("#offKind").onchange = (e) => { offKind = e.target.value; offRender(); };
+    $("#offSrc").onchange = (e) => { offSrc = e.target.value; offRender(); };
+    $("#offNew").onclick = () => offFormShow(null);
+    $("#offTpl").onclick = () => download("비회원사_양식.csv", CSV_COLS.join(",") + "\n" +
+      ["OO식품", "1234567890", "식품>과자·스낵;포장·조립", "배합;포장", "경기", "소량 OEM 가능, 반려동물 간식", "홍길동", "031-000-0000", "공공데이터", "식약처 식품제조가공업 인허가", "2026-11-05", "2026-11-05", "Y"].map(csvCell).join(",") + "\n");
+    $("#offExp").onclick = () => download("비회원사_" + new Date().toISOString().slice(0, 10) + ".csv", CSV_COLS.join(",") + "\n" + offs.map((o) =>
+      [o.company_name, o.biz_no, (o.category_ids || []).map(catLabel).join(";"), (o.process_names || []).join(";"), o.region_sido, o.intro, o.contact_name, o.contact_phone, o.source === "public" ? "공공데이터" : "네트워크", o.source_name, o.source_date, (o.active_checked_at || "").slice(0, 10), o.listed ? "Y" : "N"].map(csvCell).join(",")).join("\n"));
+    $("#offCsv").onchange = (e) => { const file = e.target.files[0]; if (file) file.text().then(offImport); e.target.value = ""; };
+    offRender();
+  }
+
+  function offRender() {
+    const q = offQ.trim().toLowerCase();
+    const shown = offs.filter((o) => (!offKind || o.kinds.includes(offKind)) && (!offSrc || o.source === offSrc) &&
+      (!q || [o.company_name, o.biz_no, o.region_sido, o.contact_phone].some((v) => (v || "").toLowerCase().includes(q))));
+    const state = (o) => o.linked_supplier_id ? '<span class="sbadge s-green">회원 가입함</span>' : o.consent === "refused" ? '<span class="sbadge s-red">제외 요청</span>' : o.listed ? '<span class="sbadge s-blue">공개</span>' : '<span class="sbadge s-gray">비공개</span>';
+    $("#offList").innerHTML = `<p class="muted" style="margin:0 0 6px">${shown.length} / ${offs.length}곳 · 공개 ${offs.filter((o) => o.listed && o.consent !== "refused" && !o.linked_supplier_id).length}곳</p>
+      <table class="data"><tr><th>업체</th><th>종류·분류</th><th>지역</th><th>연락처</th><th>출처</th><th>활동 확인</th><th>상태</th><th></th></tr>
+      ${shown.map((o) => `<tr><td><b>${esc(o.company_name)}</b><br><span class="muted">${esc(o.biz_no || "사업자번호 없음")}</span></td>
+        <td>${o.kinds.map((k) => `<span class="sbadge s-blue">${esc(k)}</span>`).join(" ")}<br><span class="muted">${esc((o.category_ids || []).map(catLabel).join(", "))}</span></td>
+        <td>${esc(o.region_sido || "")}</td><td>${esc(o.contact_name || "")}<br>${esc(o.contact_phone || "")}</td>
+        <td>${o.source === "public" ? "공공데이터" : "네트워크"}<br><span class="muted">${esc(o.source_name || "")} ${o.source_date ? date(o.source_date) : ""}</span></td>
+        <td>${o.active_checked_at ? date(o.active_checked_at) : '<span class="muted">미확인</span>'}</td><td>${state(o)}</td>
+        <td style="white-space:nowrap"><button class="btn btn-sm btn-ghost" data-oe="${o.id}">수정</button>
+          ${!o.linked_supplier_id && o.consent !== "refused" ? `<button class="btn btn-sm btn-ghost" data-ol="${o.id}">${o.listed ? "숨기기" : "공개"}</button>` : ""}
+          <button class="btn btn-sm btn-ghost" data-oa="${o.id}">오늘 활동 확인</button></td></tr>`).join("") || '<tr><td colspan="8" class="muted">등록된 업체가 없습니다.</td></tr>'}</table>`;
+    $("#offList").onclick = async (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.oe) return offFormShow(offs.find((o) => o.id === b.dataset.oe));
+      if (b.dataset.ol) { const o = offs.find((x) => x.id === b.dataset.ol); if (await call(sb.from("offline_suppliers").update({ listed: !o.listed, updated_at: new Date().toISOString() }).eq("id", o.id), o.listed ? "숨겼습니다" : "공개했습니다")) tabOff(); }
+      if (b.dataset.oa) { if (await call(sb.from("offline_suppliers").update({ active_checked_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", b.dataset.oa), "활동 확인일을 기록했습니다")) tabOff(); }
+    };
+  }
+
+  function offFormShow(o) {
+    offEdit = o; o = o || { source: "network", listed: true, consent: "unknown", category_ids: [], process_names: [] };
+    const box = $("#offForm");
+    box.innerHTML = `<form class="panel form" id="ofF" novalidate style="margin-bottom:14px;gap:12px;background:var(--bg-alt)">
+      <h3 style="margin:0">${offEdit ? "비회원사 수정" : "비회원사 추가"}</h3>
+      <div class="row3"><label>업체명 <i>*</i><input name="company_name" value="${esc(o.company_name || "")}"></label>
+        <label>사업자번호<input name="biz_no" value="${esc(o.biz_no || "")}" placeholder="숫자 10자리"></label>
+        <label>지역<select name="region_sido"><option value="">선택</option>${SIDO.map((x) => `<option ${o.region_sido === x ? "selected" : ""}>${x}</option>`).join("")}</select></label></div>
+      <div class="row2"><label>담당자<input name="contact_name" value="${esc(o.contact_name || "")}"></label><label>연락처<input name="contact_phone" value="${esc(o.contact_phone || "")}"></label></div>
+      <div><b style="font-size:14px">분류</b> <span class="muted">(대분류를 고르면 종류 배지가 정해집니다)</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 14px;margin-top:6px">${cat.majors.map((m) => `<div>
+          <label style="font-weight:700"><input type="checkbox" data-c="${m.id}" ${o.category_ids.includes(m.id) ? "checked" : ""}> ${esc(m.name)}</label>
+          ${cat.minorsOf(m.id).map((x) => `<label class="muted" style="display:block;margin-left:18px;font-size:13px"><input type="checkbox" data-c="${x.id}" ${o.category_ids.includes(x.id) ? "checked" : ""}> ${esc(x.name)}</label>`).join("")}</div>`).join("")}</div></div>
+      <label>공정 (쉼표로 구분)<input name="process_names" value="${esc((o.process_names || []).join(", "))}"></label>
+      <label>소개 (공개됨 · 업체명·연락처는 쓰지 마세요)<textarea name="intro" rows="2">${esc(o.intro || "")}</textarea></label>
+      <div class="row3"><label>출처 구분<select name="source"><option value="public" ${o.source === "public" ? "selected" : ""}>공공데이터</option><option value="network" ${o.source === "network" ? "selected" : ""}>운영사 네트워크</option></select></label>
+        <label>출처명<input name="source_name" value="${esc(o.source_name || "")}" placeholder="예: 식약처 식품제조가공업 인허가"></label>
+        <label>수집일<input name="source_date" type="date" value="${esc(o.source_date || "")}"></label></div>
+      <div class="row3"><label>활동 확인일<input name="active_checked_at" type="date" value="${esc((o.active_checked_at || "").slice(0, 10))}"></label>
+        <label>공개<select name="listed"><option value="1" ${o.listed ? "selected" : ""}>공개</option><option value="0" ${!o.listed ? "selected" : ""}>비공개</option></select></label>
+        <label>업체 의사<select name="consent"><option value="unknown" ${o.consent === "unknown" ? "selected" : ""}>미확인</option><option value="agreed" ${o.consent === "agreed" ? "selected" : ""}>노출 동의</option><option value="refused" ${o.consent === "refused" ? "selected" : ""}>제외 요청</option></select></label></div>
+      <label>내부 메모 (비공개)<textarea name="memo" rows="2">${esc(o.memo || "")}</textarea></label>
+      <div class="row-top" style="gap:8px"><button class="btn btn-sm" type="submit">저장</button><button class="btn btn-sm btn-ghost" type="button" id="ofCancel">닫기</button></div></form>`;
+    box.scrollIntoView({ behavior: "smooth", block: "start" });
+    const f = $("#ofF");
+    $("#ofCancel").onclick = () => (box.innerHTML = "");
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      if (!f.company_name.value.trim()) return toast("업체명을 입력하세요", "err");
+      const biz = f.biz_no.value.replace(/\D/g, "");
+      if (biz && biz.length !== 10) return toast("사업자번호는 숫자 10자리입니다", "err");
+      const row = { company_name: f.company_name.value.trim(), biz_no: biz || null, region_sido: f.region_sido.value || null, contact_name: f.contact_name.value || null, contact_phone: f.contact_phone.value || null,
+        category_ids: $$("[data-c]", f).filter((x) => x.checked).map((x) => +x.dataset.c), process_names: f.process_names.value.split(",").map((x) => x.trim()).filter(Boolean),
+        intro: f.intro.value || null, source: f.source.value, source_name: f.source_name.value || null, source_date: f.source_date.value || null,
+        active_checked_at: f.active_checked_at.value || null, listed: f.listed.value === "1", consent: f.consent.value, memo: f.memo.value || null, updated_at: new Date().toISOString() };
+      const ok = offEdit ? await call(sb.from("offline_suppliers").update(row).eq("id", offEdit.id), "저장했습니다")
+        : await call(sb.from("offline_suppliers").insert({ ...row, created_by: me.user.id }), "추가했습니다");
+      if (ok) tabOff();
+    };
+  }
+
+  async function offImport(text) {
+    const rows = parseCSV(text);
+    if (!rows.length) return toast("내용이 없습니다", "err");
+    const head = rows[0].map((h) => h.trim());
+    const idx = Object.fromEntries(CSV_COLS.map((c) => [c, head.indexOf(c)]));
+    if (idx["업체명"] < 0) return toast("첫 줄에 '업체명' 열이 있어야 합니다. CSV 양식을 받아 쓰세요.", "err");
+    const get = (r, c) => (idx[c] >= 0 ? (r[idx[c]] || "").trim() : "");
+    const byBiz = Object.fromEntries(offs.filter((o) => o.biz_no).map((o) => [o.biz_no, o]));
+    const errs = []; let added = 0, updated = 0, skipped = 0;
+    const now = new Date().toISOString();
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i], name = get(r, "업체명");
+      if (!name) { errs.push(`${i + 1}행: 업체명 없음`); continue; }
+      const biz = get(r, "사업자번호").replace(/\D/g, "");
+      if (biz && biz.length !== 10) { errs.push(`${i + 1}행: 사업자번호 자리수`); continue; }
+      const unknown = [];
+      const ids = get(r, "분류").split(/[;|]/).filter((x) => x.trim()).map((x) => { const c = catByName(x); if (!c) unknown.push(x.trim()); return c && c.id; }).filter(Boolean);
+      if (unknown.length) errs.push(`${i + 1}행: 모르는 분류 ${unknown.join(", ")} (나머지는 저장)`);
+      const srcRaw = get(r, "출처구분");
+      const listedRaw = get(r, "공개").toUpperCase();
+      const row = { company_name: name, biz_no: biz || null, category_ids: [...new Set(ids)], process_names: get(r, "공정").split(/[;|]/).map((x) => x.trim()).filter(Boolean),
+        region_sido: SIDO.find((x) => get(r, "지역").startsWith(x)) || null, intro: get(r, "소개") || null, contact_name: get(r, "담당자") || null, contact_phone: get(r, "연락처") || null,
+        source: /공공|public/i.test(srcRaw) ? "public" : "network", source_name: get(r, "출처명") || null, source_date: isoDate(get(r, "수집일")),
+        active_checked_at: isoDate(get(r, "활동확인일")), listed: !["N", "0", "비공개", "NO"].includes(listedRaw), updated_at: now };
+      const ex = biz && byBiz[biz];
+      if (ex) {
+        if (ex.consent === "refused" || ex.linked_supplier_id) { delete row.listed; }
+        const { error } = await sb.from("offline_suppliers").update(row).eq("id", ex.id);
+        if (error) errs.push(`${i + 1}행: ${errMsg(error)}`); else updated++;
+      } else {
+        const { error } = await sb.from("offline_suppliers").insert({ ...row, created_by: me.user.id });
+        if (error) errs.push(`${i + 1}행: ${errMsg(error)}`); else { added++; if (biz) byBiz[biz] = { id: "x" }; }
+      }
+    }
+    await tabOff();
+    $("#offForm").innerHTML = `<div class="panel" style="margin-bottom:14px"><b>CSV 반영 결과</b> 추가 ${added} · 갱신 ${updated}${skipped ? " · 건너뜀 " + skipped : ""}${errs.length ? `<ul class="muted" style="margin:8px 0 0;font-size:13px">${errs.slice(0, 50).map((x) => `<li>${esc(x)}</li>`).join("")}${errs.length > 50 ? `<li>외 ${errs.length - 50}건</li>` : ""}</ul>` : ""}</div>`;
+  }
+
+  // ======================= 요금 =======================
+  async function tabPrice() {
+    const { data } = await sb.from("pricing").select("*").order("key");
+    if (tab !== "price") return;
+    $("#body").innerHTML = `<div class="panel"><h2>요금·기준 설정</h2><p class="muted">바꾸면 홈페이지와 요청서 금액 계산에 바로 반영됩니다. 이미 접수된 의뢰 금액은 바뀌지 않습니다. 조건값별 가격은 분류 관리(추후)에서 바꿉니다.</p>
+      <div class="table-wrap"><table class="data"><tr><th>항목</th><th>값</th><th></th></tr>${(data || []).map((p) => `<tr><td>${esc(p.note || p.key)}<br><span class="muted">${esc(p.key)}</span></td>
+        <td><input type="number" data-k="${esc(p.key)}" value="${p.value}" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px;width:140px"></td>
+        <td><button class="btn btn-sm btn-ghost" data-save="${esc(p.key)}">저장</button></td></tr>`).join("")}</table></div></div>`;
+    $$("[data-save]").forEach((b) => (b.onclick = async () => {
+      const v = +$(`[data-k="${b.dataset.save}"]`).value;
+      await call(sb.from("pricing").update({ value: v }).eq("key", b.dataset.save), "저장했습니다");
+    }));
+  }
+
+  show();
+})();
+</script>
+</body>
+</html>

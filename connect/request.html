@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>아이디어 의뢰하기 | 윈-윈 커넥트</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="vendor/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/sb.js"></script>
+<script src="js/launch.js"></script>
+</head>
+<body class="rp-body">
+<header class="nav" id="nav"></header>
+<main class="page"><div class="wrap" id="root"><p class="muted">불러오는 중…</p></div></main>
+<footer class="foot" id="foot"></footer>
+
+<script>
+(async function () {
+  const { sb, S, esc, won, num, $, $$, toast, errMsg, catalog, requiredItems, conditionItems, loadMe, SIDO } = APP;
+  const L = LAUNCH;
+  const root = $("#root");
+  const q = new URLSearchParams(location.search);
+  const LOCAL_KEY = "wwc_project_draft";
+
+  const me = await loadMe();
+  if (me.profile && me.profile.role === "supplier") {
+    root.innerHTML = '<div class="empty-page"><h1>제작 파트너 계정입니다</h1><p>아이디어 의뢰는 아이디어 의뢰자 계정으로 해 주세요.</p><a class="btn" href="supplier.html">파트너 센터로</a></div>';
+    return;
+  }
+  const loggedIn = !!(me.user && me.profile);
+  let cat;
+  try { cat = await catalog(); } catch (e) { root.innerHTML = '<p class="muted">분류를 불러오지 못했습니다. 잠시 후 다시 시도하세요.</p>'; return; }
+  const PRODUCT_MAJORS = cat.majors.filter((m) => m.id <= 7);
+  const DIRECT_ON = cat.pricing.direct_request_enabled === 1;
+
+  // ---------------- 상태 ----------------
+  const blank = () => ({ title: "", idea_mode: "text", idea_desc: "", product_major: null, product_minor: null, steps: {}, channels: [], etc: Array(L.ETC_COUNT).fill(""), phase: "1" });
+  let st = blank();
+  let projectId = q.get("project") || null;
+  let project = null, partners = [], hasFirst = false, hasCoupon = false;
+  const files = {}; // 단계별 첨부 파일 (메모리에만, 접수할 때 올림)
+
+  if (projectId && loggedIn) {
+    const { data } = await sb.from("projects").select("*").eq("id", projectId).maybeSingle();
+    if (!data) { root.innerHTML = '<div class="empty-page"><h1>프로젝트를 찾을 수 없습니다</h1><a class="btn" href="projects.html">내 프로젝트</a></div>'; return; }
+    project = data;
+    st = Object.assign(blank(), data.draft || {}, { title: data.title === "새 아이디어" ? (data.draft || {}).title || "" : data.title, idea_mode: data.idea_mode || "text", idea_desc: data.idea_desc || "", product_major: data.product_major, product_minor: data.product_minor });
+    st.steps = Object.assign({}, (data.plan || {}).steps || {}, (data.draft || {}).steps || {});
+  } else if (projectId && !loggedIn) {
+    location.href = "login.html?next=" + encodeURIComponent("request.html" + location.search); return;
+  } else {
+    try { const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null"); if (saved) st = Object.assign(blank(), saved); } catch (e) {}
+  }
+  if (q.get("phase")) st.phase = q.get("phase");
+  // 둘러보기에서 찜한 파트너에게 보내는 지정 의뢰 (2단계 제품 생산에 적용)
+  const directIds = (q.get("direct") || "").split(",").filter((x) => /^[0-9a-f-]{36}$/.test(x));
+  if (directIds.length && DIRECT_ON) { st.direct = directIds; st.phase = "1"; }
+  if (!DIRECT_ON && (st.direct || []).length) { st.direct = []; }
+  if (directIds.length && !DIRECT_ON) setTimeout(() => toast("지정 의뢰는 준비 중입니다. 일반 의뢰로 진행됩니다."), 300);
+  if (!L.PHASES.some((p) => p.id === st.phase)) st.phase = "1";
+
+  async function loadProjectFacts() {
+    if (!projectId || !loggedIn) return;
+    const [p, r] = await Promise.all([
+      sb.rpc("my_project_partners", { p_project: projectId }),
+      sb.from("requests").select("id, fee_type, status").eq("project_id", projectId),
+    ]);
+    partners = p.data || [];
+    hasFirst = (r.data || []).some((x) => x.fee_type === "first" && x.status !== "cancelled");
+  }
+  await loadProjectFacts();
+  if (loggedIn) {
+    const c = await sb.from("coupons").select("*").eq("user_id", me.user.id).is("used_at", null);
+    hasCoupon = (c.data || []).some((x) => new Date(x.expires_at) > new Date());
+  }
+
+  function set(path, val) {
+    const ks = path.split("."); let o = st;
+    ks.slice(0, -1).forEach((k) => { if (o[k] == null || typeof o[k] !== "object") o[k] = {}; o = o[k]; });
+    o[ks[ks.length - 1]] = val;
+  }
+  const stepState = (n) => (st.steps[n] = st.steps[n] || {});
+  const phaseDone = (id) => !!(project && ((project.plan || {}).phases || {})[id]);
+
+  // ---------------- 화면 ----------------
+  function render() {
+    const ph = L.PHASES.find((p) => p.id === st.phase);
+    root.innerHTML = `
+      <div class="page-head">
+        <div><h1>아이디어 의뢰하기</h1><p>${st.title ? esc(st.title) + " · " : ""}차수마다 접수하고, 샘플을 받아 본 뒤 이어서 진행할 수 있습니다.</p></div>
+        <div style="display:flex;gap:10px;align-items:center"><span class="save-state" id="saveState">${loggedIn ? "" : "로그인 전에는 이 기기에 임시 저장됩니다"}</span><button class="btn btn-sm btn-ghost" id="saveBtn">임시저장</button></div>
+      </div>
+      <div class="phase-tabs">${L.PHASES.map((p) => `<button class="phase-tab ${p.id === st.phase ? "on" : ""} ${phaseDone(p.id) ? "done" : ""}" data-phase="${p.id}"><b>${p.label} · ${esc(p.name)}</b><small>${phaseDone(p.id) ? "접수 완료" : p.steps.map((n) => n + "단계").join(" · ")}</small></button>`).join("")}</div>
+      <p class="muted" style="margin:-6px 0 16px">${esc(ph.desc)}${st.phase !== "1" && !projectId ? " 이미 제품이 있다면 1차를 건너뛰고 여기서 시작해도 됩니다." : ""}</p>
+      <div class="split" style="grid-template-columns:minmax(0,1fr) 320px">
+        <div id="steps">${ph.steps.map(stepPanel).join("")}</div>
+        <aside class="panel sum-box" id="sumBox"></aside>
+      </div>`;
+    bind();
+    renderSummary();
+  }
+
+  function optionCards(n) {
+    const s = stepState(n);
+    return `<div class="opt-grid">${L.STEPS[n].options.map((o) => {
+      const disabled = o.needsPartners && !partners.length;
+      return `<label class="opt ${s.opt === o.v ? "on" : ""} ${disabled ? "disabled" : ""}">
+        <input type="radio" name="opt${n}" value="${o.v}" data-step="${n}" ${s.opt === o.v ? "checked" : ""} ${disabled ? "disabled" : ""}>
+        <span class="opt-top"><span>${esc(o.label)}</span>${L.helpButton(o.help)}</span>
+        ${o.sub ? `<small>${esc(o.sub)}</small>` : ""}
+        ${disabled ? '<small>이 프로젝트에 연결된 파트너가 생기면 고를 수 있어요</small>' : ""}
+      </label>`; }).join("")}</div>`;
+  }
+
+  function stepPanel(n) {
+    const def = L.STEPS[n], s = stepState(n);
+    let body = "";
+    if (n === 1) body = step1();
+    else if (def.channels) body = channels();
+    else {
+      body = optionCards(n);
+      const o = L.optionOf(n, s.opt);
+      if (o && o.source) body += sourceForm(n, o.source);
+      if (o && o.followup) body += followupForm(n);
+      if (n === 6) {
+        const notes = L.certNotesFor(st.product_major, st.product_minor);
+        body += `<div class="note" style="margin-top:12px"><b>이 제품에 필요할 수 있는 신고·인증</b>${notes.length ? `<ul style="margin:6px 0 0;padding-left:18px">${notes.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "<p style='margin:6px 0 0'>1단계에서 제품 분야를 고르면 해당 안내가 보입니다.</p>"}
+          <p style="margin:6px 0 0;font-size:12px">주요 예시이며 품목마다 다릅니다. 정확한 대상 여부는 관계 기관이나 대행 파트너에게 확인하세요.</p></div>`;
+      }
+      if (n === 3 && s.opt) body += `<p class="muted" style="margin:10px 0 0">고른 포장 형태는 4·5단계 의뢰와 파트너에게 함께 전달됩니다.</p>`;
+    }
+    return `<section class="step-panel" data-panel="${n}"><div class="step-head"><span class="step-no">${n}</span><h2>${esc(def.title)}</h2></div>${body}</section>`;
+  }
+
+  function step1() {
+    const minors = st.product_major ? cat.minorsOf(st.product_major) : [];
+    const conf = cat.categories.find((c) => c.id === st.product_minor);
+    return `
+      <div class="form" style="padding:0;border:0;gap:14px">
+        <label>어떤 아이디어인가요? <i>*</i> <span class="hint">만들고 싶은 것을 한 줄로</span><input data-k="title" value="${esc(st.title)}" maxlength="80" placeholder="예: 우리 강아지 얼굴 모양 져키, 팬 굿즈 키링, 비건 립밤"></label>
+        <div class="chips" id="suggest"></div>
+        <div class="row2">
+          <label>제품 분야 <i>*</i><select data-k="product_major" data-num><option value="">분야 선택</option>${PRODUCT_MAJORS.map((m) => `<option value="${m.id}" ${st.product_major === m.id ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select></label>
+          <label>품목 <span class="hint">선택, 무료</span><select data-k="product_minor" data-num><option value="">전체</option>${minors.map((m) => `<option value="${m.id}" ${st.product_minor === m.id ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select></label>
+        </div>
+        ${conf && conf.confusion_note ? `<div class="note">참고: ${esc(conf.confusion_note)}</div>` : ""}
+        <div><p class="qb-title" style="margin-bottom:6px">아이디어를 어떻게 보여 줄까요?</p>
+          <div class="opt-grid">${L.STEPS[1].options.map((o) => `<label class="opt ${st.idea_mode === o.v ? "on" : ""}"><input type="radio" name="ideaMode" value="${o.v}" ${st.idea_mode === o.v ? "checked" : ""}><span class="opt-top"><span>${esc(o.label)}</span>${L.helpButton(o.help)}</span></label>`).join("")}</div></div>
+        <label>아이디어 설명 <span class="hint">누구에게, 왜, 어떤 느낌으로 팔고 싶은지</span><textarea data-k="idea_desc" rows="4" maxlength="3000" placeholder="회사명·연락처는 적지 마세요 (파트너에게 보입니다)">${esc(st.idea_desc)}</textarea></label>
+        ${st.idea_mode !== "text" ? fileBox(1, "컨셉 이미지·스케치") : ""}
+        ${st.idea_mode === "ai" ? aiTools() : `<details><summary class="muted" style="cursor:pointer">AI 이미지 도구 목록 보기</summary>${aiTools()}</details>`}
+        <div class="soon"><b>업데이트 예정</b><span>AI 컨셉 이미지 생성 기능이 곧 들어옵니다. 그때부터는 1단계가 이 한 페이지에서 끝납니다.</span></div>
+      </div>`;
+  }
+  function aiTools() {
+    return `<div class="ai-tools">${L.AI_TOOLS.map((t) => `<a class="ai-tool" href="${t.url}" target="_blank" rel="noopener"><b>${esc(t.name)} ↗</b><span>${esc(t.note)}</span></a>`).join("")}</div>
+      <div class="note" style="font-size:13px"><b>AI 이미지 이용 안내</b><ul style="margin:6px 0 0;padding-left:18px">${L.AI_NOTICE.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+      <p style="margin:6px 0 0;font-size:12px">윈-윈 커넥트는 위 도구와 제휴 관계가 없으며, 바로 갈 수 있게 링크만 제공합니다.</p></div>`;
+  }
+
+  function fileBox(n, label) {
+    const list = files[n] || [];
+    return `<div><p class="qb-title" style="margin-bottom:6px">${esc(label)} <span class="hint">파일당 10MB · 접수할 때 함께 올라갑니다 (임시저장에는 포함되지 않음)</span></p>
+      <div class="files">${list.map((x, i) => `<div class="file-row"><span>${x.file.type.startsWith("image/") ? "🖼" : "📄"}</span><span class="fname">${esc(x.file.name)}</span>
+        <select data-fstep="${n}" data-fi="${i}"><option value="selected" ${x.visibility === "selected" ? "selected" : ""}>선정된 파트너만</option><option value="all" ${x.visibility === "all" ? "selected" : ""}>모두 공개</option></select>
+        <button type="button" class="x" data-fdel="${n}" data-fi="${i}" aria-label="삭제">✕</button></div>`).join("")}</div>
+      <label class="btn btn-sm btn-ghost" style="margin-top:8px;width:fit-content;cursor:pointer">파일 추가<input type="file" data-fadd="${n}" multiple hidden></label></div>`;
+  }
+
+  function sourceForm(n, src) {
+    const s = stepState(n), f = (s.src = s.src || {});
+    let major = src.major || st.product_major, minor;
+    if (src.kind === "product") { major = st.product_major; minor = f.minor !== undefined ? f.minor : st.product_minor; }
+    else if (src.kind === "packaging") minor = f.minor !== undefined ? f.minor : L.PACK_MINOR[(st.steps[3] || {}).opt] || null;
+    else minor = f.minor !== undefined ? f.minor : src.minor || null;
+    f.major = major; f.minor = minor;
+    if (!major) return `<div class="note" style="margin-top:12px">1단계에서 제품 분야를 먼저 골라 주세요.</div>`;
+    const svc = src.kind === "service";
+    const req = requiredItems(cat, major), cond = conditionItems(cat, major, minor);
+    const picked = f.items || [];
+    const v = (k) => (f[k] == null ? "" : f[k]);
+    const direct = n === 2 && (st.direct || []).length;
+    return `<div class="sub-form form" style="padding:14px 0 0;border:0;border-top:1px dashed var(--line);border-radius:0">
+      ${direct ? `<div class="note info"><b>지정 의뢰</b> · 둘러보기에서 고른 파트너 ${st.direct.length}곳에만 보냅니다. 48시간 안에 응답하지 않거나 필수 항목이 맞지 않는 파트너는 그만큼 환불합니다. <button type="button" class="chip" id="clearDirect">지정 해제하고 전체에 공개</button></div>` : ""}
+      <p class="qb-title" style="margin:0">파트너 찾기 조건 <span class="hint">${esc(cat.catName(major))}${minor ? " › " + esc(cat.catName(minor)) : ""}</span></p>
+      ${src.kind !== "product" ? `<label>세부 분야<select data-k="steps.${n}.src.minor" data-num><option value="">전체</option>${cat.minorsOf(major).map((m) => `<option value="${m.id}" ${minor === m.id ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select></label>` : ""}
+      <div class="row3">
+        ${svc ? "" : `<label>수량 (개) <i>*</i><div class="range-in"><input type="number" min="1" data-k="steps.${n}.src.qty_min" data-num value="${v("qty_min")}" placeholder="최소"><span>~</span><input type="number" min="1" data-k="steps.${n}.src.qty_max" data-num value="${v("qty_max")}" placeholder="최대"></div></label>`}
+        <label>${svc ? "예산 (원)" : "단가 (원)"} <span class="hint">모르면 비움</span><div class="range-in"><input type="number" min="0" data-k="steps.${n}.src.price_min" data-num value="${v("price_min")}" placeholder="최소"><span>~</span><input type="number" min="0" data-k="steps.${n}.src.price_max" data-num value="${v("price_max")}" placeholder="최대"></div></label>
+        <label>${svc ? "희망 기간 (일)" : "납기 (일)"} ${src.kind === "product" ? "<i>*</i>" : ""}<div class="range-in"><input type="number" min="1" data-k="steps.${n}.src.due_min" data-num value="${v("due_min")}" placeholder="최소"><span>~</span><input type="number" min="1" data-k="steps.${n}.src.due_max" data-num value="${v("due_max")}" placeholder="최대"></div></label>
+      </div>
+      ${svc ? "" : `<div class="row2"><label>납품지<select data-k="steps.${n}.src.sido"><option value="">선택</option>${SIDO.map((x) => `<option ${f.sido === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+        ${src.kind === "product" ? `<label class="check" style="align-self:end"><input type="checkbox" data-k="steps.${n}.src.sample" ${f.sample ? "checked" : ""}><span>샘플이 먼저 필요합니다</span></label>` : "<span></span>"}</div>`}
+      <div><p class="qb-title" style="margin-bottom:6px">파트너가 함께 답하는 필수 항목 <span class="hint">무료</span></p>
+        <div class="checks">${req.map((x) => `<div class="check-row fixed"><span>✓</span><span>${esc(x.label)} <span class="muted">${esc(x.question || "")}</span></span><span class="price">무료</span></div>`).join("")}</div></div>
+      <div><p class="qb-title" style="margin-bottom:6px">추가로 확인할 조건 <span class="hint">1개당 5,000원</span></p>
+        <div class="checks">${cond.length ? cond.map((x) => `<label class="check-row"><input type="checkbox" data-item="${n}" value="${x.id}" ${picked.includes(x.id) ? "checked" : ""}><span>${esc(x.label)}${x.is_license ? '<span class="tag-rec">권장</span>' : ""}</span><span class="price">+${num(x.price)}원</span></label>`).join("") : '<p class="muted">필요한 조건은 아래 설명에 적어 주세요.</p>'}</div></div>
+      ${direct ? "" : `<label>받을 업체 수 <span class="hint">2곳 기본, 추가 1곳당 ${num(cat.pricing.open_extra_supplier)}원</span><input type="number" min="1" max="10" data-k="steps.${n}.src.count" data-num value="${f.count || 2}" style="max-width:120px"></label>`}
+      <label>자세한 내용<textarea rows="3" maxlength="3000" data-k="steps.${n}.src.desc" placeholder="규격, 재질, 참고 제품 등. 회사명·연락처는 적지 마세요.">${esc(f.desc || "")}</textarea></label>
+      ${fileBox(n, "첨부 파일")}
+    </div>`;
+  }
+
+  function followupForm(n) {
+    const s = stepState(n), pick = s.partners || [];
+    return `<div class="sub-form"><p class="qb-title" style="margin:0">문의할 파트너 <span class="hint">이 프로젝트에서 이미 연결된 곳 · 무료</span></p>
+      <div class="partner-pick">${partners.map((p) => `<label class="check-row"><input type="checkbox" data-partner="${n}" value="${p.supplier_id}" ${pick.includes(p.supplier_id) ? "checked" : ""}><span><b>${esc(p.company_name)}</b> <span class="muted">${esc(p.region_sido || "")} · ${esc(L.STAGE_NAME[p.stage] || "")} 파트너</span></span></label>`).join("")}</div>
+      <label class="form" style="padding:0;border:0">문의 내용<textarea rows="3" data-k="steps.${n}.desc" placeholder="예: 포장재(파우치)도 함께 제작 가능한지, 수량·단가 범위는 어떤지">${esc(s.desc || "")}</textarea></label></div>`;
+  }
+
+  function channels() {
+    const sel = new Set(st.channels || []);
+    return `<p class="muted" style="margin:0 0 10px">여러 개 고를 수 있습니다. 상세페이지 규격과 물류 연동에 함께 쓰입니다.</p>
+      ${L.CHANNEL_GROUPS.map((g) => `<div class="channel-group"><p>${esc(g.name)}</p><div class="channel-grid">${g.items.map((c) => `<label><input type="checkbox" data-channel value="${esc(c)}" ${sel.has(c) ? "checked" : ""}>${esc(c)}</label>`).join("")}</div></div>`).join("")}
+      <div class="channel-group"><p>직접 입력</p><div class="etc-grid">${Array.from({ length: L.ETC_COUNT }, (_, i) => `<input class="etc-in" data-k="etc.${i}" value="${esc((st.etc || [])[i] || "")}" placeholder="기타${i + 1}" style="font:inherit;font-size:14px;border:1px solid var(--line);border-radius:10px;padding:9px 12px">`).join("")}</div></div>`;
+  }
+
+  // ---------------- 금액 요약 ----------------
+  function phaseItems(phaseId) {
+    const ph = L.PHASES.find((p) => p.id === phaseId);
+    return ph.steps.map((n) => ({ n, s: st.steps[n] || {}, o: L.optionOf(n, (st.steps[n] || {}).opt) })).filter((x) => x.o && (x.o.source || x.o.followup));
+  }
+  function fees(items) {
+    const p = cat.pricing; let first = !hasFirst; let now = 0, later = 0;
+    const lines = items.map(({ n, s, o }) => {
+      if (o.followup) return { n, label: L.STAGE_NAME[n] + " · 기존 파트너 문의", now: 0, later: 0, note: "무료" };
+      const f = s.src || {}, count = n === 2 && (st.direct || []).length ? st.direct.length : f.count || 2;
+      const extra = Math.max(count - p.base_suppliers, 0) * p.open_extra_supplier;
+      const cond = cat.items.filter((x) => (f.items || []).includes(x.id) && !x.is_required).reduce((a, x) => a + x.price, 0);
+      if (first) {
+        first = false;
+        const intake = hasCoupon ? Math.max(p.intake_fee - p.coupon_amount, 0) : p.intake_fee;
+        return { n, label: L.STAGE_NAME[n] + " · 파트너 찾기 (첫 의뢰)", now: intake, later: p.open_base + extra + cond, note: hasCoupon ? "접수비 쿠폰 적용" : "접수비" };
+      }
+      return { n, label: L.STAGE_NAME[n] + " · 파트너 찾기 (이어하기)", now: p.continue_fee + extra + cond, later: 0, note: "" };
+    });
+    lines.forEach((l) => { now += l.now; later += l.later; });
+    return { lines, now, later };
+  }
+  function renderSummary() {
+    const ph = L.PHASES.find((p) => p.id === st.phase);
+    const items = phaseItems(st.phase), fz = fees(items);
+    const done = phaseDone(st.phase);
+    $("#sumBox").innerHTML = `
+      <h2>${esc(ph.label)} 접수 요약</h2>
+      ${items.length ? fz.lines.map((l) => `<div class="fee-line"><span>${esc(l.label)}${l.note ? `<small>${esc(l.note)}</small>` : ""}</span><b>${l.now ? won(l.now) : "0원"}</b></div>`).join("") : '<p class="muted" style="margin:0">이 차수에서 파트너를 찾는 단계가 없습니다. 고른 내용은 계획으로 저장됩니다.</p>'}
+      ${items.length ? `<div class="sum-line sum-total"><span>지금 낼 금액</span><span>${won(fz.now)}</span></div>` : ""}
+      ${fz.later ? `<div class="sum-line"><span>리스트 받을 때 착수금</span><span>${won(fz.later)}</span></div><p class="muted" style="margin:4px 0 0">착수금은 총 프로젝트당 한 번입니다. 이후 차수는 파트너 찾기 1건당 ${num(cat.pricing.continue_fee)}원(+추가 조건)입니다.</p>` : ""}
+      ${hasCoupon && !hasFirst ? `<div class="note info" style="margin-top:10px">🎁 첫 접수비 무료 쿠폰이 적용됩니다.</div>` : ""}
+      <label class="check" style="margin-top:12px"><input type="checkbox" id="agree"><span><a href="terms.html" target="_blank" style="text-decoration:underline">이용약관과 환불 기준</a>에 동의합니다.</span></label>
+      <button class="btn btn-block" id="submitBtn" style="margin-top:12px" ${done ? "disabled" : ""}>${done ? "이미 접수한 차수입니다" : items.length ? esc(ph.label) + " 접수하기" : esc(ph.label) + " 계획 저장하기"}</button>
+      <p class="form-msg" id="msg" role="status"></p>
+      <p class="muted" style="margin:6px 0 0">접수비 입금이 확인되면 제작 파트너에게 공개됩니다. 응답한 파트너가 한 곳도 없으면 접수비를 돌려드립니다.</p>`;
+    $("#submitBtn").onclick = submit;
+  }
+
+  // ---------------- 입력 연결 ----------------
+  function bind() {
+    $$(".phase-tab").forEach((b) => (b.onclick = () => { st.phase = b.dataset.phase; history.replaceState(null, "", "request.html?" + new URLSearchParams(Object.assign(projectId ? { project: projectId } : {}, { phase: st.phase }))); render(); scheduleSave(); }));
+    $("#saveBtn").onclick = () => save(true);
+    const stepsEl = $("#steps");
+    stepsEl.addEventListener("input", (e) => {
+      const t = e.target;
+      if (t.dataset.k) set(t.dataset.k, t.type === "checkbox" ? t.checked : t.dataset.num !== undefined ? (t.value === "" ? null : Number(t.value)) : t.value);
+      if (t.dataset.k === "title") suggest();
+      if ((t.dataset.k || "").includes(".src")) renderSummary();
+      scheduleSave();
+    });
+    stepsEl.addEventListener("change", (e) => {
+      const t = e.target;
+      if (t.name && t.name.startsWith("opt")) { stepState(+t.dataset.step).opt = t.value; rerenderKeepScroll(); }
+      else if (t.name === "ideaMode") { st.idea_mode = t.value; rerenderKeepScroll(); }
+      else if (t.dataset.k === "product_major") { st.product_minor = null; Object.values(st.steps).forEach((s) => s.src && delete s.src.minor); rerenderKeepScroll(); }
+      else if (t.dataset.k === "product_minor" || (t.dataset.k || "").endsWith(".minor")) rerenderKeepScroll();
+      else if (t.dataset.item) { const s = stepState(+t.dataset.item); s.src = s.src || {}; const ids = new Set(s.src.items || []); t.checked ? ids.add(+t.value) : ids.delete(+t.value); s.src.items = [...ids]; renderSummary(); }
+      else if (t.dataset.partner) { const s = stepState(+t.dataset.partner); const ids = new Set(s.partners || []); t.checked ? ids.add(t.value) : ids.delete(t.value); s.partners = [...ids]; }
+      else if (t.dataset.channel !== undefined) { st.channels = $$("[data-channel]:checked").map((x) => x.value); }
+      else if (t.dataset.fadd) {
+        const n = +t.dataset.fadd; files[n] = files[n] || [];
+        for (const file of t.files) { if (file.size > 10 * 1024 * 1024) { toast(file.name + ": 10MB를 넘습니다", "err"); continue; } files[n].push({ file, visibility: "selected" }); }
+        rerenderKeepScroll(); return;
+      }
+      else if (t.dataset.fstep) { files[+t.dataset.fstep][+t.dataset.fi].visibility = t.value; return; }
+      scheduleSave();
+    });
+    stepsEl.addEventListener("click", (e) => {
+      const d = e.target.closest("[data-fdel]"); if (d) { files[+d.dataset.fdel].splice(+d.dataset.fi, 1); rerenderKeepScroll(); }
+      if (e.target.id === "clearDirect") { st.direct = []; rerenderKeepScroll(); scheduleSave(); return; }
+      const sg = e.target.closest("[data-sug]"); if (sg) { const c = cat.categories.find((x) => x.id === +sg.dataset.sug); st.product_major = c.parent_id; st.product_minor = c.id; rerenderKeepScroll(); scheduleSave(); }
+    });
+    suggest();
+  }
+  function rerenderKeepScroll() { const y = window.scrollY; render(); window.scrollTo(0, y); }
+  function suggest() {
+    const box = $("#suggest"); if (!box) return;
+    const words = (st.title || "").replace(/\s+/g, " ").trim().split(" ").filter((w) => w.length >= 2);
+    const hits = cat.categories.filter((c) => c.parent_id && c.parent_id <= 7 && words.some((w) => c.name.includes(w) || (c.aliases || []).some((a) => a.includes(w) || w.includes(a)))).slice(0, 5);
+    box.innerHTML = hits.map((c) => `<button type="button" class="chip" data-sug="${c.id}">추천: ${esc(cat.catName(c.parent_id))} › ${esc(c.name)}</button>`).join("");
+  }
+
+  // ---------------- 저장 ----------------
+  let saveTimer = null;
+  function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(() => save(false), 1500); }
+  const stamp = () => new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  async function ensureProject() {
+    if (projectId) return projectId;
+    const ins = await sb.from("projects").insert({ demander_id: me.user.id, title: st.title || "새 아이디어" }).select("id").single();
+    if (ins.error) throw ins.error;
+    projectId = ins.data.id;
+    history.replaceState(null, "", "request.html?project=" + projectId + "&phase=" + st.phase);
+    try { localStorage.removeItem(LOCAL_KEY); } catch (e) {}
+    return projectId;
+  }
+  async function save(manual) {
+    const el = $("#saveState");
+    if (!loggedIn) {
+      try { localStorage.setItem(LOCAL_KEY, JSON.stringify(st)); } catch (e) {}
+      if (el) el.textContent = "이 기기에 임시 저장됨 " + stamp();
+      if (manual) { toast("이 기기에 저장했습니다. 로그인하면 계정에 저장됩니다."); location.href = "login.html?next=" + encodeURIComponent("request.html?resume=1"); }
+      return;
+    }
+    if (!manual && !projectId && !st.title) return;
+    try {
+      if (el) { el.textContent = "저장 중…"; el.className = "save-state saving"; }
+      await ensureProject();
+      const { error } = await sb.from("projects").update({ title: st.title || "새 아이디어", idea_mode: st.idea_mode, idea_desc: st.idea_desc || null,
+        product_major: st.product_major, product_minor: st.product_minor, draft: st }).eq("id", projectId);
+      if (error) throw error;
+      if (el) { el.textContent = "자동 저장됨 " + stamp(); el.className = "save-state"; }
+      if (manual) toast("임시저장했습니다. 내 프로젝트에서 이어서 작성할 수 있습니다.");
+    } catch (e) { if (el) { el.textContent = "저장 실패"; el.className = "save-state"; } if (manual) toast(errMsg(e), "err"); }
+  }
+
+  // ---------------- 접수 ----------------
+  async function submit() {
+    const msg = $("#msg"), btn = $("#submitBtn");
+    const say = (t, err) => { msg.textContent = t; msg.className = "form-msg " + (err ? "err" : ""); };
+    if (!loggedIn) { await save(false); location.href = "login.html?next=" + encodeURIComponent("request.html?resume=1&phase=" + st.phase); return; }
+    if (!$("#agree").checked) return say("이용약관과 환불 기준에 동의해 주세요.", true);
+    if (!st.title.trim()) { st.phase = "1"; render(); return toast("1단계에서 아이디어를 한 줄로 적어 주세요.", "err"); }
+    if (!st.product_major) { st.phase = "1"; render(); return toast("1단계에서 제품 분야를 골라 주세요.", "err"); }
+    const ph = L.PHASES.find((p) => p.id === st.phase);
+    const items = phaseItems(st.phase);
+    for (const { n, s, o } of items) {
+      if (o.followup && !(s.partners || []).length) return say(`${n}단계: 문의할 파트너를 골라 주세요.`, true);
+      if (o.source) {
+        const f = s.src || {};
+        if (o.source.kind !== "service" && !f.qty_min) return say(`${n}단계: 수량을 적어 주세요.`, true);
+        if (o.source.kind === "product" && !f.due_min) return say(`${n}단계: 납기를 적어 주세요.`, true);
+        if ((f.qty_max && f.qty_min && f.qty_max < f.qty_min) || (f.due_max && f.due_min && f.due_max < f.due_min)) return say(`${n}단계: 범위의 최대값이 최소값보다 작습니다.`, true);
+      }
+    }
+    btn.disabled = true; say("접수 중…");
+    try {
+      await ensureProject();
+      await save(false);
+      const pack = L.optionOf(3, (st.steps[3] || {}).opt);
+      const context = [`제품: ${st.title} (${cat.catName(st.product_major)}${st.product_minor ? " › " + cat.catName(st.product_minor) : ""})`,
+        pack ? `포장: ${pack.label}` : "", (st.channels || []).length ? `판매 채널: ${st.channels.slice(0, 5).join(", ")}${st.channels.length > 5 ? " 외" : ""}` : ""].filter(Boolean).join(" / ");
+      const created = [];
+      for (const { n, s, o } of items) {
+        const f = s.src || {};
+        const row = o.followup
+          ? { demander_id: me.user.id, project_id: projectId, stage: n, phase: st.phase, kind: "direct", major_id: st.product_major, minor_id: st.product_minor,
+              title: `${st.title} · ${L.STAGE_NAME[n]} 문의`, description: s.desc || null, supplier_count: (s.partners || []).length, context }
+          : { demander_id: me.user.id, project_id: projectId, stage: n, phase: st.phase, kind: n === 2 && (st.direct || []).length ? "direct" : "open", major_id: f.major, minor_id: f.minor || null,
+              title: `${st.title} · ${L.STAGE_NAME[n]}`, description: [n === 2 ? st.idea_desc : "", f.desc].filter(Boolean).join("\n\n") || null,
+              qty_min: f.qty_min ?? null, qty_max: f.qty_max ?? f.qty_min ?? null, price_min: f.price_min ?? null, price_max: f.price_max ?? f.price_min ?? null,
+              due_min_days: f.due_min ?? null, due_max_days: f.due_max ?? f.due_min ?? null, sample_needed: !!f.sample, deliver_sido: f.sido || null,
+              supplier_count: Math.max(1, Math.min(10, f.count || 2)), context };
+        const ins = await sb.from("requests").insert(row).select("id").single();
+        if (ins.error) throw ins.error;
+        const rid = ins.data.id;
+        if (o.source && (f.items || []).length) {
+          const r = await sb.from("request_items").insert(cat.items.filter((x) => f.items.includes(x.id)).map((x) => ({ request_id: rid, item_id: x.id, price: x.price })));
+          if (r.error) throw r.error;
+        }
+        if (o.followup) { const r = await sb.from("request_targets").insert(s.partners.map((p) => ({ request_id: rid, supplier_id: p }))); if (r.error) throw r.error; }
+        else if (n === 2 && (st.direct || []).length) { const r = await sb.from("request_targets").insert(st.direct.map((p) => ({ request_id: rid, supplier_id: p }))); if (r.error) throw r.error; }
+        const up = [...(files[n] || []), ...(n === 2 ? files[1] || [] : [])];
+        for (let i = 0; i < up.length; i++) {
+          const x = up[i], safe = x.file.name.replace(/[^\w.\-가-힣]/g, "_").slice(-80), path = `${rid}/${i + 1}-${safe}`;
+          say(`파일 올리는 중… (${L.STAGE_NAME[n]} ${i + 1}/${up.length})`);
+          const u = await sb.storage.from(S.storageBucket).upload(path, x.file, { upsert: false, contentType: x.file.type || undefined });
+          if (u.error) throw u.error;
+          const r = await sb.from("request_files").insert({ request_id: rid, path, file_name: x.file.name, is_image: x.file.type.startsWith("image/"), visibility: x.visibility, sort: i + 1 });
+          if (r.error) throw r.error;
+        }
+        const sub = await sb.from("requests").update({ submitted_at: new Date().toISOString() }).eq("id", rid).select("id").single();
+        if (sub.error) throw sub.error;
+        const back = await sb.from("requests").select("code, fee_type, intake_amount, deposit_amount, stage").eq("id", rid).single();
+        created.push(back.data);
+      }
+      const plan = Object.assign({}, project ? project.plan : {});
+      plan.steps = Object.assign({}, plan.steps || {}, Object.fromEntries(ph.steps.map((n) => [n, st.steps[n] || {}])));
+      if (ph.steps.includes(9)) { plan.channels = st.channels || []; plan.etc = (st.etc || []).filter(Boolean); }
+      plan.phases = Object.assign({}, plan.phases || {}, { [st.phase]: { submitted_at: new Date().toISOString(), requests: created.map((c) => c.code) } });
+      const pu = await sb.from("projects").update({ plan, draft: st }).eq("id", projectId).select("*").single();
+      if (pu.error) throw pu.error;
+      project = pu.data;
+      const nowSum = created.reduce((a, c) => a + (c.intake_amount || 0), 0), later = created.reduce((a, c) => a + (c.deposit_amount || 0), 0);
+      const next = L.PHASES[L.PHASES.findIndex((p) => p.id === st.phase) + 1];
+      root.innerHTML = `<div class="empty-page" style="padding-top:6vh">
+        <h1>${esc(ph.label)} ${created.length ? "의뢰가 접수되었습니다" : "계획을 저장했습니다"}</h1>
+        ${created.length ? `<div class="panel" style="max-width:560px;margin:0 auto 16px;text-align:left">${created.map((c) => `<div class="fee-line"><span>${esc(c.code)} · ${esc(L.STAGE_NAME[c.stage] || "")}<small>${c.fee_type === "followup" ? "기존 파트너 문의" : c.fee_type === "first" ? "첫 의뢰 · 리스트 받을 때 착수금 " + won(c.deposit_amount) : "이어하기"}</small></span><b>${won(c.intake_amount || 0)}</b></div>`).join("")}
+          <div class="sum-line sum-total"><span>지금 낼 금액</span><span>${won(nowSum)}</span></div>${later ? `<div class="sum-line"><span>리스트 받을 때 착수금</span><span>${won(later)}</span></div>` : ""}</div>
+          <div class="note info" style="max-width:560px;margin:0 auto 20px;text-align:left">${nowSum ? esc(S.bankInfo) + "<br>" : ""}입금(또는 확인)이 끝나면 제작 파트너에게 공개되고 48시간 동안 응답을 받습니다.</div>` : ""}
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><a class="btn" href="projects.html?project=${projectId}">내 프로젝트로 가기</a>
+        ${next ? `<a class="btn btn-ghost" href="request.html?project=${projectId}&phase=${next.id}">${esc(next.label)} 미리 작성하기</a>` : ""}</div></div>`;
+    } catch (e) {
+      btn.disabled = false; say("접수하지 못했습니다: " + errMsg(e), true);
+    }
+  }
+
+  render();
+  if (q.get("resume") && loggedIn && !projectId && st.title) { await save(false); toast("작성하던 내용을 계정에 저장했습니다."); }
+})();
+</script>
+</body>
+</html>
