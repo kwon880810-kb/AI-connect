@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>의뢰하기 | 윈-윈 커넥트</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="vendor/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/sb.js"></script>
+</head>
+<body class="rp-body">
+<header class="nav" id="nav"></header>
+<main class="page"><div class="wrap" id="root"><p class="muted">불러오는 중…</p></div></main>
+<footer class="foot" id="foot"></footer>
+
+<template id="tpl">
+  <div class="page-head">
+    <div>
+      <h1 id="pageTitle">제작 의뢰하기</h1>
+      <p id="pageSub">조건을 적어 주시면 공장들이 항목마다 가능 여부를 답합니다. 의뢰자 정보는 공급자에게 공개되지 않습니다.</p>
+    </div>
+  </div>
+  <div class="note info" id="directBox" hidden></div>
+  <div class="split" style="grid-template-columns:minmax(0,1fr) 320px">
+    <form class="form" id="reqForm" novalidate style="gap:22px">
+      <section>
+        <label>만들고 싶은 것 <i>*</i><input name="title" required maxlength="80" placeholder="예: 강아지 져키 파우치, 화장품 단상자"></label>
+        <div class="chips" id="suggest" style="margin-top:8px"></div>
+      </section>
+
+      <section class="row2">
+        <label>분야 <i>*</i><select name="major" required></select></label>
+        <label>품목 (중분류) <span class="hint">선택, 무료 · 고르지 않으면 분야 전체 공급자에게 공개</span><select name="minor"><option value="">전체</option></select></label>
+      </section>
+      <div class="note" id="confusion" hidden></div>
+
+      <section>
+        <p class="qb-title" style="margin-bottom:8px">필수 조건 <span class="hint">무료 · 범위로 적어 주세요</span></p>
+        <div class="row3">
+          <label>수량 (개) <i>*</i><div class="range-in"><input name="qty_min" type="number" min="1" inputmode="numeric" placeholder="최소" required><span>~</span><input name="qty_max" type="number" min="1" inputmode="numeric" placeholder="최대"></div></label>
+          <label>단가 (원) <span class="hint">모르면 비움</span><div class="range-in"><input name="price_min" type="number" min="0" inputmode="numeric" placeholder="최소"><span>~</span><input name="price_max" type="number" min="0" inputmode="numeric" placeholder="최대"></div></label>
+          <label>납기 (일) <i>*</i><div class="range-in"><input name="due_min" type="number" min="1" inputmode="numeric" placeholder="최소" required><span>~</span><input name="due_max" type="number" min="1" inputmode="numeric" placeholder="최대"></div></label>
+        </div>
+        <p class="muted" style="margin:6px 0 0">공장의 범위가 겹치면 ● 가능, 겹치지 않아도 ±20% 안이면 ▲ 조건부로 보여 드립니다.</p>
+        <div class="row2" style="margin-top:12px">
+          <label>납품지<select name="deliver_sido"><option value="">선택</option></select></label>
+          <label class="check" style="align-self:end"><input type="checkbox" name="sample_needed"><span>샘플이 먼저 필요합니다</span></label>
+        </div>
+        <p class="qb-title" style="margin:16px 0 6px">공장이 함께 답하는 필수 항목 <span class="hint">무료</span></p>
+        <div class="checks" id="requiredList"></div>
+      </section>
+
+      <section>
+        <p class="qb-title" style="margin-bottom:6px">추가로 확인할 조건 <span class="hint">1개당 5,000원 · 꼭 필요한 것만</span></p>
+        <div class="checks" id="condList"><p class="muted">분야를 먼저 고르세요.</p></div>
+      </section>
+
+      <section id="countBox">
+        <label>받을 업체 수<input name="supplier_count" type="number" min="1" max="10" value="2" style="max-width:120px"></label>
+        <p class="muted" style="margin:6px 0 0" id="countHint"></p>
+      </section>
+
+      <section>
+        <label>자세한 내용<textarea name="description" rows="5" maxlength="3000" placeholder="규격, 재질, 참고 제품, 지금 거래처의 문제점 등. 회사명·연락처는 적지 마세요 (공급자에게 보입니다)."></textarea></label>
+      </section>
+
+      <section>
+        <p class="qb-title" style="margin-bottom:6px">첨부 파일 <span class="hint">참고 이미지, 도면, 디자인 (파일당 10MB까지)</span></p>
+        <div class="files" id="fileList"></div>
+        <label class="btn btn-sm btn-ghost" style="margin-top:8px;width:fit-content;cursor:pointer">파일 추가<input type="file" id="fileInput" multiple hidden></label>
+        <p class="muted" style="margin:6px 0 0">파일마다 공개 범위를 고르세요. <b>모두 공개</b>는 의뢰를 보는 공급자 전체, <b>선정된 업체만</b>은 리스트에 오른 업체만 봅니다. 목록에는 '모두 공개' 이미지 1장이 썸네일로 보입니다. 로고나 회사명이 보이는 파일은 '선정된 업체만'을 권합니다.</p>
+      </section>
+
+      <label class="check"><input type="checkbox" name="agree" required><span><a href="terms.html" target="_blank" style="text-decoration:underline">이용약관과 환불 기준</a>에 동의합니다. <i>*</i></span></label>
+      <p class="form-msg" role="status"></p>
+    </form>
+
+    <aside class="panel sum-box">
+      <h2>예상 금액</h2>
+      <div id="sum"></div>
+      <button class="btn btn-block" id="submitBtn" style="margin-top:14px">의뢰 접수하기</button>
+      <p class="muted" style="margin:10px 0 0">접수 후 입금이 확인되면 공급자에게 공개됩니다. 업체를 찾지 못하면 그만큼 환불합니다.</p>
+    </aside>
+  </div>
+</template>
+
+<script>
+(async function () {
+  const { sb, S, esc, won, num, $, $$, toast, errMsg, catalog, quote, requiredItems, conditionItems, requireLogin, SIDO } = APP;
+  const root = $("#root");
+  const me = await requireLogin(["demander", "admin"]);
+  if (!me) return;
+  let cat;
+  try { cat = await catalog(); } catch (e) { root.innerHTML = '<p class="muted">분류를 불러오지 못했습니다. 잠시 후 다시 시도하세요.</p>'; return; }
+  root.innerHTML = $("#tpl").innerHTML;
+  const f = $("#reqForm");
+
+  // ---------- 지정 의뢰 ----------
+  const q = new URLSearchParams(location.search);
+  const targets = (q.get("direct") || "").split(",").filter((x) => /^[0-9a-f-]{36}$/.test(x));
+  const kind = targets.length ? "direct" : "open";
+  if (kind === "direct") {
+    $("#pageTitle").textContent = "지정 의뢰하기";
+    const { data } = await sb.rpc("supplier_directory");
+    const picked = (data || []).filter((d) => targets.includes(d.supplier_key));
+    $("#directBox").hidden = false;
+    $("#directBox").innerHTML = `<b>지정 의뢰</b> · 둘러보기에서 고른 공급사 ${picked.length}곳에만 보냅니다 (착수금 절반).
+      <div class="chips" style="margin-top:6px">${picked.map((p, i) => `<span class="chip">공급사 ${i + 1} · ${esc(p.region_sido || "지역 미입력")} · ${esc((p.categories || []).join(", "))}</span>`).join("")}</div>
+      <p class="muted" style="margin:6px 0 0">48시간 안에 응답하지 않거나 필수 항목이 맞지 않는 업체는 그만큼 환불합니다. <a href="directory.html" style="text-decoration:underline">다시 고르기</a></p>`;
+    $("#countBox").hidden = true;
+    if (!picked.length) { $("#directBox").innerHTML = '지정한 공급사를 찾을 수 없습니다. <a href="directory.html">공급사 둘러보기</a>에서 다시 골라 주세요.'; }
+  }
+
+  // ---------- 분류 ----------
+  f.major.innerHTML = '<option value="">분야 선택</option>' + cat.majors.map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join("");
+  f.deliver_sido.innerHTML += SIDO.map((s) => `<option>${s}</option>`).join("");
+
+  function fillMinors() {
+    const mid = +f.major.value;
+    f.minor.innerHTML = '<option value="">전체 (분야 전체 공개)</option>' + (mid ? cat.minorsOf(mid).map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join("") : "");
+  }
+  function showConfusion() {
+    const c = cat.categories.find((x) => x.id === +f.minor.value);
+    $("#confusion").hidden = !(c && c.confusion_note);
+    if (c && c.confusion_note) $("#confusion").textContent = "참고: " + c.confusion_note;
+  }
+  function renderItems() {
+    const mid = +f.major.value, nid = +f.minor.value || null;
+    const req = mid ? requiredItems(cat, mid) : requiredItems(cat, -1);
+    $("#requiredList").innerHTML = req.map((x) => `<div class="check-row fixed"><span>✓</span><span>${esc(x.label)} <span class="muted">${esc(x.question || "")}</span></span><span class="price">무료</span></div>`).join("");
+    const prev = new Set($$("#condList input:checked").map((i) => +i.value));
+    const cond = mid ? conditionItems(cat, mid, nid) : [];
+    $("#condList").innerHTML = cond.length ? cond.map((x) => `
+      <label class="check-row"><input type="checkbox" value="${x.id}" ${prev.has(x.id) ? "checked" : ""}>
+        <span>${esc(x.label)}${x.is_license ? '<span class="tag-rec">권장</span>' : ""}</span><span class="price">+${num(x.price)}원</span></label>`).join("")
+      : `<p class="muted">${mid ? "이 분야는 추가 조건 목록이 아직 없습니다. 필요한 조건은 '자세한 내용'에 적어 주세요." : "분야를 먼저 고르세요."}</p>`;
+    updateSum();
+  }
+  f.major.onchange = () => { fillMinors(); showConfusion(); renderItems(); };
+  f.minor.onchange = () => { showConfusion(); renderItems(); };
+  fillMinors();
+
+  // "만들고 싶은 것"으로 분류 추천 (별칭·이름)
+  f.title.oninput = () => {
+    const words = f.title.value.replace(/\s+/g, " ").trim().split(" ").filter((w) => w.length >= 2);
+    const hits = cat.categories.filter((c) => c.parent_id && words.some((w) =>
+      c.name.includes(w) || (c.aliases || []).some((a) => a.includes(w) || w.includes(a)))).slice(0, 5);
+    $("#suggest").innerHTML = hits.map((c) => `<button type="button" class="chip" data-id="${c.id}">추천: ${esc(cat.catName(c.parent_id))} › ${esc(c.name)}</button>`).join("");
+  };
+  $("#suggest").onclick = (e) => {
+    const b = e.target.closest("[data-id]"); if (!b) return;
+    const c = cat.categories.find((x) => x.id === +b.dataset.id);
+    f.major.value = c.parent_id; fillMinors(); f.minor.value = c.id; showConfusion(); renderItems();
+  };
+
+  // ---------- 파일 ----------
+  let files = [];
+  $("#fileInput").onchange = (e) => {
+    for (const file of e.target.files) {
+      if (file.size > 10 * 1024 * 1024) { toast(file.name + ": 10MB를 넘습니다", "err"); continue; }
+      files.push({ file, visibility: file.type.startsWith("image/") && !files.some((x) => x.visibility === "all") ? "all" : "selected" });
+    }
+    e.target.value = ""; renderFiles();
+  };
+  function renderFiles() {
+    $("#fileList").innerHTML = files.map((x, i) => `
+      <div class="file-row"><span>${x.file.type.startsWith("image/") ? "🖼" : "📄"}</span><span class="fname">${esc(x.file.name)}</span>
+        <select data-i="${i}"><option value="all" ${x.visibility === "all" ? "selected" : ""}>모두 공개</option><option value="selected" ${x.visibility === "selected" ? "selected" : ""}>선정된 업체만</option></select>
+        <button type="button" class="x" data-del="${i}" aria-label="삭제">✕</button></div>`).join("");
+  }
+  $("#fileList").onchange = (e) => { if (e.target.dataset.i) files[+e.target.dataset.i].visibility = e.target.value; };
+  $("#fileList").onclick = (e) => { if (e.target.dataset.del) { files.splice(+e.target.dataset.del, 1); renderFiles(); } };
+
+  // ---------- 금액 ----------
+  const supplierCount = () => (kind === "direct" ? Math.max(targets.length, 1) : Math.max(1, Math.min(10, +f.supplier_count.value || 1)));
+  const pickedItems = () => $$("#condList input:checked").map((i) => +i.value);
+  function updateSum() {
+    const n = supplierCount(), qte = quote(cat, kind, n, pickedItems());
+    const p = cat.pricing;
+    $("#countHint").textContent = `착수금에 ${p.base_suppliers}곳 포함, 추가 1곳당 ${num(kind === "direct" ? p.direct_extra_supplier : p.open_extra_supplier)}원`;
+    $("#sum").innerHTML = `
+      <div class="sum-line"><span>${kind === "direct" ? "지정 의뢰" : "일반 의뢰"} 착수금</span><span>${won(qte.base)}</span></div>
+      <div class="sum-line"><span>업체 추가 (${Math.max(n - p.base_suppliers, 0)}곳)</span><span>${won(qte.extra)}</span></div>
+      <div class="sum-line"><span>추가 조건 (${pickedItems().length}개)</span><span>${won(qte.items)}</span></div>
+      <div class="sum-line sum-total"><span>합계</span><span>${won(qte.total)}</span></div>
+      ${S.vatNote ? `<p class="muted" style="margin:6px 0 0">${esc(S.vatNote)}</p>` : ""}`;
+  }
+  f.addEventListener("input", (e) => { e.target.classList && e.target.classList.remove("invalid"); if (e.target.name === "supplier_count") updateSum(); });
+  $("#condList").addEventListener("change", updateSum);
+  renderItems();
+
+  // ---------- 접수 ----------
+  const val = (n) => (f[n].value === "" ? null : Number(f[n].value));
+  $("#submitBtn").onclick = async () => {
+    const msg = $(".form-msg");
+    let bad = null;
+    ["title", "major", "qty_min", "due_min", "agree"].forEach((n) => {
+      const el = f[n], empty = el.type === "checkbox" ? !el.checked : !String(el.value).trim();
+      el.classList.toggle("invalid", empty); if (empty && !bad) bad = el;
+    });
+    const qmin = val("qty_min"), qmax = val("qty_max") ?? qmin, dmin = val("due_min"), dmax = val("due_max") ?? dmin;
+    if (!bad && (qmax < qmin || dmax < dmin || (val("price_max") != null && val("price_min") != null && val("price_max") < val("price_min")))) {
+      msg.textContent = "범위의 최대값이 최소값보다 작습니다."; msg.className = "form-msg err"; return;
+    }
+    if (bad) { msg.textContent = "표시된 항목을 채워 주세요."; msg.className = "form-msg err"; bad.focus(); return; }
+    if (kind === "direct" && !targets.length) return;
+
+    const btn = $("#submitBtn"); btn.disabled = true; msg.textContent = "접수 중…"; msg.className = "form-msg";
+    let reqId = null;
+    try {
+      const ins = await sb.from("requests").insert({
+        demander_id: me.user.id, kind, major_id: +f.major.value, minor_id: +f.minor.value || null,
+        title: f.title.value.trim(), description: f.description.value.trim() || null,
+        qty_min: qmin, qty_max: qmax, price_min: val("price_min"), price_max: val("price_max") ?? val("price_min"),
+        due_min_days: dmin, due_max_days: dmax, sample_needed: f.sample_needed.checked,
+        deliver_sido: f.deliver_sido.value || null, supplier_count: supplierCount(),
+      }).select("id").single();
+      if (ins.error) throw ins.error;
+      reqId = ins.data.id;
+      const items = cat.items.filter((x) => pickedItems().includes(x.id)).map((x) => ({ request_id: reqId, item_id: x.id, price: x.price }));
+      if (items.length) { const r = await sb.from("request_items").insert(items); if (r.error) throw r.error; }
+      if (kind === "direct") { const r = await sb.from("request_targets").insert(targets.map((t) => ({ request_id: reqId, supplier_id: t }))); if (r.error) throw r.error; }
+      for (let i = 0; i < files.length; i++) {
+        const x = files[i], safe = x.file.name.replace(/[^\w.\-가-힣]/g, "_").slice(-80);
+        const path = `${reqId}/${i + 1}-${safe}`;
+        msg.textContent = `파일 올리는 중… (${i + 1}/${files.length})`;
+        const up = await sb.storage.from(S.storageBucket).upload(path, x.file, { upsert: false, contentType: x.file.type || undefined });
+        if (up.error) throw up.error;
+        const r = await sb.from("request_files").insert({ request_id: reqId, path, file_name: x.file.name, is_image: x.file.type.startsWith("image/"), visibility: x.visibility, sort: i + 1 });
+        if (r.error) throw r.error;
+      }
+      const sub = await sb.from("requests").update({ submitted_at: new Date().toISOString() }).eq("id", reqId).select("code, amount_total").single();
+      if (sub.error) throw sub.error;
+      root.innerHTML = `
+        <div class="empty-page">
+          <h1>의뢰가 접수되었습니다</h1>
+          <p>의뢰번호 <b>${esc(sub.data.code)}</b> · 결제 금액 <b>${won(sub.data.amount_total)}</b></p>
+          <div class="note info" style="max-width:520px;margin:0 auto 20px;text-align:left">${esc(S.bankInfo)}<br>입금이 확인되면 공급자에게 공개되고 48시간 동안 응답을 받습니다. 진행 상황은 '내 프로젝트'에서 볼 수 있습니다.</div>
+          <a class="btn" href="projects.html?id=${reqId}">내 프로젝트로 가기</a>
+        </div>`;
+    } catch (e) {
+      btn.disabled = false;
+      msg.textContent = "접수하지 못했습니다: " + errMsg(e) + (reqId ? " (작성 중인 의뢰는 내 프로젝트에서 지울 수 있습니다)" : "");
+      msg.className = "form-msg err";
+    }
+  };
+})();
+</script>
+</body>
+</html>

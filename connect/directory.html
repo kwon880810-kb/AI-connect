@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공급사 둘러보기 | 윈-윈 커넥트</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="vendor/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/sb.js"></script>
+</head>
+<body class="rp-body">
+<header class="nav" id="nav"></header>
+<main class="page">
+  <div class="wrap">
+    <div class="page-head">
+      <div><h1>공급사 둘러보기</h1><p>사업자 확인을 마친 공급사입니다. 업체명과 연락처는 의뢰 후 선정되면 공개됩니다.</p></div>
+    </div>
+    <div class="tabbar" id="filters"></div>
+    <div class="dir-grid" id="grid"><p class="muted">불러오는 중…</p></div>
+    <div class="dir-bar" id="bar" hidden>
+      <span id="barText"></span>
+      <button class="btn btn-sm btn-ghost" id="clearBtn" style="background:transparent;color:#fff;box-shadow:inset 0 0 0 1.5px #fff">비우기</button>
+      <a class="btn btn-sm" id="directBtn" href="#">찜한 공급사에 지정 의뢰 (착수금 절반)</a>
+    </div>
+  </div>
+</main>
+<footer class="foot" id="foot"></footer>
+
+<script>
+(async function () {
+  const { sb, esc, num, $, $$, catalog } = APP;
+  const cat = await catalog();
+  const KEY = "wwc_picks";
+  let picks = [];
+  try { picks = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (e) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(picks)); } catch (e) {} };
+  let filter = "";
+
+  const { data, error } = await sb.rpc("supplier_directory");
+  if (error) { $("#grid").innerHTML = '<p class="muted">불러오지 못했습니다.</p>'; return; }
+  const list = data || [];
+  const majorsWith = cat.majors.filter((m) => list.some((s) => (s.categories || []).includes(m.name)));
+  $("#filters").innerHTML = `<button data-f="" class="on">전체 ${list.length}</button>` +
+    majorsWith.map((m) => `<button data-f="${esc(m.name)}">${esc(m.name)} ${list.filter((s) => (s.categories || []).includes(m.name)).length}</button>`).join("");
+
+  function render() {
+    picks = picks.filter((p) => list.some((s) => s.supplier_key === p));
+    const shown = list.filter((s) => !filter || (s.categories || []).includes(filter));
+    $("#grid").innerHTML = shown.length ? shown.map((s, i) => {
+      const on = picks.includes(s.supplier_key);
+      return `<div class="dir-card ${on ? "on" : ""}">
+        <div class="row-top"><span class="dir-name">공급사 #${list.indexOf(s) + 1}</span><span class="right chip">${esc(s.region_sido || "지역 미입력")}</span></div>
+        <div class="chips">${(s.categories || []).map((c) => `<span class="chip">${esc(c)}</span>`).join("")}</div>
+        ${s.intro ? `<p style="margin:0;font-size:14px;color:var(--ink-2);white-space:pre-wrap">${esc(s.intro)}</p>` : ""}
+        ${(s.processes || []).length ? `<p class="muted" style="margin:0">공정: ${esc(s.processes.slice(0, 8).join(", "))}${s.processes.length > 8 ? " 외" : ""}</p>` : ""}
+        ${(s.verified_licenses || []).length ? `<div class="chips">${s.verified_licenses.map((l) => `<span class="chip" style="color:var(--green);border-color:var(--green)">✓ ${esc(l.replace(" 서류 확인", ""))}</span>`).join("")}</div>` : ""}
+        <div class="row-top"><span class="muted">응답 ${num(s.response_count)}건</span>
+          <button class="btn btn-sm ${on ? "" : "btn-ghost"} right" data-pick="${s.supplier_key}">${on ? "찜함 ✓" : "찜하기"}</button></div>
+      </div>`;
+    }).join("") : '<div class="panel">아직 등록된 공급사가 없습니다. 일반 의뢰를 하시면 브로커가 직접 찾아 드립니다.</div>';
+    $("#bar").hidden = !picks.length;
+    $("#barText").textContent = `찜한 공급사 ${picks.length}곳`;
+    $("#directBtn").href = "request.html?direct=" + picks.join(",");
+  }
+  $("#filters").onclick = (e) => {
+    const b = e.target.closest("[data-f]"); if (!b) return;
+    filter = b.dataset.f; $$("#filters button").forEach((x) => x.classList.toggle("on", x === b)); render();
+  };
+  $("#grid").onclick = (e) => {
+    const b = e.target.closest("[data-pick]"); if (!b) return;
+    const k = b.dataset.pick;
+    picks = picks.includes(k) ? picks.filter((x) => x !== k) : picks.concat(k);
+    save(); render();
+  };
+  $("#clearBtn").onclick = () => { picks = []; save(); render(); };
+  render();
+})();
+</script>
+</body>
+</html>

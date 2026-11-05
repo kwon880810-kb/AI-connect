@@ -20,7 +20,8 @@ insert into profiles (id, role, name, phone, company) values
  ('00000000-0000-0000-0000-0000000000d2', 'demander', '김철수', '010-2222-2222', '냥냥몰'),
  ('00000000-0000-0000-0000-0000000000b1', 'supplier', '김실장', '010-3333-3333', '가나식품'),
  ('00000000-0000-0000-0000-0000000000b2', 'supplier', '이팀장', '010-4444-4444', '다라푸드'),
- ('00000000-0000-0000-0000-0000000000b3', 'supplier', '미인증', '010-5555-5555', '미인증상사');
+ ('00000000-0000-0000-0000-0000000000b3', 'supplier', '미인증', '010-5555-5555', '미인증상사')
+on conflict (id) do update set role = excluded.role, name = excluded.name, phone = excluded.phone, company = excluded.company;
 insert into suppliers (id, biz_no, biz_verified_at, company_name, contact_phone, region_sido, intro) values
  ('00000000-0000-0000-0000-0000000000b1', '1111111111', now(), '가나식품', '010-3333-3333', '경기', '져키 전문'),
  ('00000000-0000-0000-0000-0000000000b2', '2222222222', now(), '다라푸드', '010-4444-4444', '충북', '펫 간식 OEM'),

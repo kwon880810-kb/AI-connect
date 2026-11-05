@@ -8,6 +8,8 @@
 | `migrations/0001_init.sql` | 테이블, 금액 계산, 범위 비교(●▲✕), 적합도 자동 계산, 권한 규칙(RLS) |
 | `migrations/0002_seed_categories.sql` | 카테고리표 1차안 (대분류 8, 중분류 30, 체크리스트 항목, 공정) |
 | `migrations/0003_hardening.sql` | 보안 점검 반영: 공급자 피드를 함수로, 비회원 호출 권한 정리, search_path 고정 |
+| `migrations/0004_app.sql` | 화면용: 가입 시 회원 정보 자동 생성, 의뢰 제출(금액 서버 계산·제출 후 수정 불가), 관리자 처리(입금 확인·리스트 전달·확정), 이의신청 시 상태 변경 |
+| `migrations/0005_storage.sql` | 첨부 파일 저장소 `request-files`와 권한 (실제 Supabase에만 적용) |
 | `tests/` | 로컬 PostgreSQL로 권한 규칙을 시험하는 파일 (실제 Supabase에는 넣지 않음) |
 
 ## 연결된 프로젝트 (2026-11-05 생성)
@@ -16,7 +18,7 @@
 | 프로젝트 | `winwin-connect` (조직 `winwin-connect`, 리전 서울 `ap-northeast-2`, 무료) |
 | Project URL | `https://ityavotmbqzatuhaygdg.supabase.co` |
 | 공개 키 (publishable) | `sb_publishable_1j6pGXO7xZyX-eeOoY965g_6KgXGnDd` |
-| 적용된 마이그레이션 | `init`, `seed_categories`, `hardening` (+ 트리거 함수 권한 회수) |
+| 적용된 마이그레이션 | `init`, `seed_categories`, `hardening`, `app`, `storage` |
 
 공개 키는 홈페이지에 넣는 값이라 공개되어도 괜찮습니다. 데이터 보호는 권한 규칙(RLS)이 합니다.
 **service_role 키와 DB 비밀번호는 저장소나 채팅에 절대 넣지 마세요.**
@@ -28,15 +30,27 @@
 
 ## 새 프로젝트에 적용하기
 1. supabase.com에서 프로젝트 만들기 (리전: Seoul)
-2. SQL Editor에서 `0001_init.sql` → `0002_seed_categories.sql` → `0003_hardening.sql` 순서로 실행
+2. SQL Editor에서 `0001` → `0005` 순서로 실행
 3. 첫 관리자 지정: Authentication에서 대표님 계정으로 가입한 뒤 SQL Editor에서
    ```sql
    insert into profiles (id, role, name) values ('<대표님 user id>', 'admin', '권봉구');
    ```
 
 ## 시험
+**권한 규칙 시험** (로컬 PostgreSQL)
 ```bash
 bash supabase/tests/run.sh
+```
+
+**화면 전체 흐름 시험**: 로컬 PostgreSQL 위에서 Supabase를 흉내 내는 시험 서버(`tests/mock_supabase.py`)를 띄우고, Playwright로 가입부터 확정까지 40개 항목을 확인합니다.
+```bash
+bash supabase/tests/reset_app_db.sh
+```
+```bash
+su postgres -c "python3 supabase/tests/mock_supabase.py --db wwc_app --port 8787 --root $(pwd)"
+```
+```bash
+node supabase/tests/e2e.js http://localhost:8787
 ```
 비회원, 미인증 공급자, 공급자, 수요자, 관리자로 바꿔 가며 48개 항목을 확인합니다. 예를 들면 이런 것들입니다.
 - 공급자는 수요자 정보를 못 봄

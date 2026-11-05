@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>내 프로젝트 | 윈-윈 커넥트</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="vendor/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/sb.js"></script>
+</head>
+<body class="rp-body">
+<header class="nav" id="nav"></header>
+<main class="page">
+  <div class="wrap">
+    <div class="page-head">
+      <div><h1>내 프로젝트</h1><p>의뢰 진행 상황, 공급자 리스트, 이의신청을 여기서 봅니다.</p></div>
+      <a class="btn btn-sm" href="request.html">새 의뢰</a>
+    </div>
+    <div class="split">
+      <div class="rows" id="list"><p class="muted">불러오는 중…</p></div>
+      <div id="detail"><div class="panel muted">왼쪽에서 의뢰를 고르세요.</div></div>
+    </div>
+  </div>
+</main>
+<footer class="foot" id="foot"></footer>
+
+<script>
+(async function () {
+  const { sb, S, esc, won, num, range, date, $, $$, toast, errMsg, catalog, requireLogin, reqStatus, badge, ans, rangeMark, signedUrl } = APP;
+  const me = await requireLogin(["demander", "admin"]);
+  if (!me) return;
+  const cat = await catalog();
+  let reqs = [], current = null;
+  const DISPUTE = { open: "접수", awaiting_opinion: "공급자 의견 대기", accepted: "인정", rejected: "불인정" };
+  const KIND = { required: "필수 항목 불일치", condition: "추가 조건 불일치", no_contact: "연락 두절" };
+
+  async function loadList() {
+    const { data, error } = await sb.from("requests").select("*").eq("demander_id", me.user.id).order("created_at", { ascending: false });
+    if (error) { $("#list").innerHTML = `<p class="muted">${esc(errMsg(error))}</p>`; return; }
+    reqs = data;
+    $("#list").innerHTML = reqs.length ? reqs.map((r) => `
+      <button class="row-card ${current === r.id ? "on" : ""}" data-id="${r.id}">
+        <div class="row-top">${badge(reqStatus(r))}<span class="muted">${esc(r.code || "")}</span><span class="right muted">${date(r.created_at)}</span></div>
+        <b>${esc(r.title)}</b>
+        <div class="row-meta"><span>${esc(cat.catName(r.major_id))}${r.minor_id ? " › " + esc(cat.catName(r.minor_id)) : ""}</span><span>${r.kind === "direct" ? "지정 의뢰" : "일반 의뢰"}</span>${r.amount_total ? `<span>${won(r.amount_total)}</span>` : ""}</div>
+      </button>`).join("") : '<div class="panel">아직 의뢰가 없습니다. <a href="request.html" style="text-decoration:underline">첫 의뢰하기</a></div>';
+  }
+
+  async function open(id) {
+    current = id; $$(".row-card").forEach((b) => b.classList.toggle("on", b.dataset.id === id));
+    const r = reqs.find((x) => x.id === id); if (!r) return;
+    const d = $("#detail"); d.innerHTML = '<div class="panel muted">불러오는 중…</div>';
+    const [items, fl] = await Promise.all([
+      sb.from("request_items").select("item_id, price").eq("request_id", id),
+      sb.from("request_files").select("*").eq("request_id", id).order("sort"),
+    ]);
+    const itemLabel = (iid) => (cat.items.find((x) => x.id === iid) || {}).label || "";
+    let html = `
+      <div class="panel">
+        <div class="row-top">${badge(reqStatus(r))}<span class="muted">${esc(r.code || "")}</span></div>
+        <h2 style="margin-top:8px">${esc(r.title)}</h2>
+        <dl class="kv-grid">
+          <div><dt>분야</dt><dd>${esc(cat.catName(r.major_id))}${r.minor_id ? " › " + esc(cat.catName(r.minor_id)) : ""}</dd></div>
+          <div><dt>수량</dt><dd>${range(r.qty_min, r.qty_max, "개")}</dd></div>
+          <div><dt>단가</dt><dd>${range(r.price_min, r.price_max, "원")}</dd></div>
+          <div><dt>납기</dt><dd>${range(r.due_min_days, r.due_max_days, "일")}</dd></div>
+          <div><dt>받을 업체</dt><dd>${r.supplier_count}곳</dd></div>
+          <div><dt>금액</dt><dd>${r.amount_total ? won(r.amount_total) : "-"}</dd></div>
+        </dl>
+        ${(items.data || []).length ? `<h3>추가 확인 조건</h3><div class="chips">${items.data.map((x) => `<span class="chip">${esc(itemLabel(x.item_id))}</span>`).join("")}</div>` : ""}
+        ${r.description ? `<h3>자세한 내용</h3><p style="white-space:pre-wrap;margin:0">${esc(r.description)}</p>` : ""}
+        ${(fl.data || []).length ? `<h3>첨부 파일</h3><div class="files">${fl.data.map((x) => `
+          <div class="file-row"><span>${x.is_image ? "🖼" : "📄"}</span><a class="fname" href="#" data-file="${esc(x.path)}" style="text-decoration:underline">${esc(x.file_name || x.path)}</a>
+            <select data-fid="${x.id}" ${["open", "selecting", "draft"].includes(r.status) ? "" : "disabled"}><option value="all" ${x.visibility === "all" ? "selected" : ""}>모두 공개</option><option value="selected" ${x.visibility === "selected" ? "selected" : ""}>선정된 업체만</option></select></div>`).join("")}</div>` : ""}
+      </div>`;
+
+    if (r.status === "draft" && !r.submitted_at) {
+      html += `<div class="panel"><h2>작성 중인 의뢰</h2><p class="muted">접수가 끝나지 않은 의뢰입니다. 지우고 다시 작성해 주세요.</p><button class="btn btn-sm btn-ghost" id="delDraft">지우기</button></div>`;
+    } else if (r.status === "draft") {
+      html += `<div class="panel"><h2>입금 대기</h2><p>결제 금액 <b>${won(r.amount_total)}</b></p><div class="note info">${esc(S.bankInfo)} 입금이 확인되면 공급자에게 공개됩니다.</div></div>`;
+    }
+    if (["open", "selecting"].includes(r.status)) {
+      const st = await sb.rpc("request_stats", { p_request: id });
+      const s = (st.data || [])[0] || { views: 0, responses: 0, response_rate: 0 };
+      html += `<div class="panel"><h2>공급자 응답 현황</h2>
+        <div class="stats">열람 <b>${num(s.views)}</b> / 응답 <b>${num(s.responses)}</b> · 응답률 <b>${num(s.response_rate)}%</b></div>
+        <p class="muted" style="margin:8px 0 0">응답 마감 ${date(r.respond_until, true)} · 응답 내용은 리스트를 전달할 때 함께 보여 드립니다.</p></div>`;
+    }
+    if (["delivered", "disputed", "confirmed"].includes(r.status)) html += await supplierList(r);
+    d.innerHTML = html;
+
+    d.querySelectorAll("[data-file]").forEach((a) => (a.onclick = async (e) => {
+      e.preventDefault(); const u = await signedUrl(a.dataset.file); if (u) window.open(u, "_blank"); else toast("파일을 열 수 없습니다", "err");
+    }));
+    d.querySelectorAll("[data-fid]").forEach((s) => (s.onchange = async () => {
+      const { error } = await sb.from("request_files").update({ visibility: s.value }).eq("id", s.dataset.fid);
+      toast(error ? errMsg(error) : "공개 범위를 바꿨습니다", error ? "err" : "");
+    }));
+    const del = $("#delDraft");
+    if (del) del.onclick = async () => {
+      if (!confirm("작성 중인 의뢰를 지울까요?")) return;
+      const { error } = await sb.from("requests").delete().eq("id", id);
+      if (error) return toast(errMsg(error), "err");
+      current = null; await loadList(); $("#detail").innerHTML = '<div class="panel muted">지웠습니다.</div>';
+    };
+    d.querySelectorAll("[data-dispute]").forEach((b) => (b.onclick = () => disputeForm(r, b.dataset.dispute)));
+  }
+
+  async function supplierList(r) {
+    const { data: resp } = await sb.from("responses").select("*").eq("request_id", r.id).eq("status", "selected");
+    const ids = (resp || []).map((x) => x.id);
+    const supIds = (resp || []).map((x) => x.supplier_id).filter(Boolean);
+    const [answers, sups, disputes] = await Promise.all([
+      ids.length ? sb.from("response_answers").select("*").in("response_id", ids) : { data: [] },
+      supIds.length ? sb.from("suppliers").select("id, company_name, contact_name, contact_phone, contact_email, region_sido").in("id", supIds) : { data: [] },
+      sb.from("disputes").select("*").eq("request_id", r.id).order("created_at"),
+    ]);
+    const itemLabel = (iid) => (cat.items.find((x) => x.id === iid) || {}).label || "";
+    const left = r.verify_until ? Math.ceil((new Date(r.verify_until) - Date.now()) / 86400000) : 0;
+    const canDispute = ["delivered", "disputed"].includes(r.status) && left > 0;
+    let html = `<div class="panel"><h2>공급자 리스트</h2>
+      <p class="muted" style="margin:0 0 12px">리스트 전달일 ${date(r.delivered_at)} · ${r.status === "confirmed" ? "확정됨" : canDispute ? `검증기간 <b>${left}일</b> 남음 (${date(r.verify_until)}까지)` : "검증기간 종료"}</p>
+      <div class="note info" style="margin-bottom:12px">업체에 연락하실 때 "${esc(S.brand)} 보고 연락드립니다, 의뢰번호 ${esc(r.code)}"라고 말씀해 주세요.</div>`;
+    html += (resp || []).sort((a, b) => (b.fit_pct || 0) - (a.fit_pct || 0)).map((x, i) => {
+      const s = (sups.data || []).find((y) => y.id === x.supplier_id) || {};
+      const a = (answers.data || []).filter((y) => y.response_id === x.id);
+      const tel = (s.contact_phone || "").replace(/[^0-9+]/g, "");
+      return `<div class="rp-card" style="margin-bottom:12px">
+        <div class="rp-card-top"><div>${i === 0 ? '<span class="rp-best">가장 잘 맞음</span>' : ""}<h3>${esc(s.company_name || "공급사")}</h3><span class="rp-region">${esc(s.region_sido || "")}</span></div>
+          <div class="rp-score"><b>${x.fit_pct == null ? "–" : num(x.fit_pct) + "%"}</b><small>적합도</small></div></div>
+        <div class="rp-bar"><span style="width:${x.fit_pct || 0}%"></span></div>
+        <ul class="rp-checks">
+          <li><span class="rp-q">수량 ${range(x.qty_min, x.qty_max, "개")}</span>${ans(rangeMark(r.qty_min, r.qty_max, x.qty_min, x.qty_max))}</li>
+          <li><span class="rp-q">단가 ${range(x.price_min, x.price_max, "원")}</span>${ans(rangeMark(r.price_min, r.price_max, x.price_min, x.price_max))}</li>
+          <li><span class="rp-q">납기 ${range(x.due_min_days, x.due_max_days, "일")}</span>${ans(rangeMark(r.due_min_days, r.due_max_days, x.due_min_days, x.due_max_days))}</li>
+          ${a.map((y) => `<li><span class="rp-q">${esc(itemLabel(y.item_id))}</span>${ans(y.value)}${y.note ? `<span class="rp-note">${esc(y.note)}</span>` : ""}</li>`).join("")}
+        </ul>
+        ${x.sample_cost ? `<p class="rp-memo"><b>샘플</b> ${esc(x.sample_cost)}</p>` : ""}
+        ${x.memo ? `<p class="rp-memo"><b>공장 메모</b> ${esc(x.memo)}</p>` : ""}
+        <div class="rp-contact">
+          <span>담당 <b>${esc(s.contact_name || "-")}</b></span>
+          ${tel ? `<a class="btn btn-sm" href="tel:${esc(tel)}">☎ ${esc(s.contact_phone)}</a>` : ""}
+          ${s.contact_email ? `<a class="btn btn-sm btn-ghost" href="mailto:${esc(s.contact_email)}">✉ 메일</a>` : ""}
+          ${canDispute ? `<button class="btn btn-sm btn-ghost" data-dispute="${x.id}">체크리스트와 달라요</button>` : ""}
+        </div>
+      </div>`;
+    }).join("") || '<p class="muted">선정된 업체가 없습니다.</p>';
+    html += `</div>`;
+    if ((disputes.data || []).length) {
+      html += `<div class="panel"><h2>이의신청</h2><div class="rows">${disputes.data.map((x) => {
+        const s = (sups.data || []).find((y) => y.id === ((resp || []).find((z) => z.id === x.response_id) || {}).supplier_id) || {};
+        return `<div class="row-card" style="cursor:default"><div class="row-top"><span class="sbadge ${x.status === "accepted" ? "s-green" : x.status === "rejected" ? "s-gray" : "s-amber"}">${DISPUTE[x.status]}</span><b>${esc(s.company_name || "")}</b><span class="right muted">${date(x.created_at)}</span></div>
+          <div class="row-meta"><span>${KIND[x.kind]}</span>${x.remedy ? `<span>처리: ${x.remedy === "refund" ? "환불" : "대체 업체"}</span>` : ""}</div>
+          <p style="margin:4px 0 0;white-space:pre-wrap">${esc(x.claim)}</p>${x.decision_note ? `<p class="muted" style="margin:4px 0 0">판정: ${esc(x.decision_note)}</p>` : ""}</div>`;
+      }).join("")}</div></div>`;
+    }
+    return html;
+  }
+
+  function disputeForm(r, responseId) {
+    const box = document.createElement("div");
+    box.className = "panel";
+    box.innerHTML = `<h2>체크리스트와 다른 점 알리기</h2>
+      <form class="form" style="padding:0;border:0" novalidate>
+        <label>무엇이 달랐나요<select name="kind"><option value="required">필수 항목 (수량·단가·납기·인허가 등)</option><option value="condition">추가 확인 조건</option><option value="no_contact">연락이 안 됨 (3영업일 동안 3번 넘게)</option></select></label>
+        <label>실제로 들은 내용 <i>*</i><textarea name="claim" rows="4" required placeholder="예: 11/6 오후 2시 통화, 최소 수량이 3,000개부터라고 함"></textarea></label>
+        <p class="muted">통화 일시, 문자·견적서 캡처 같은 증빙이 있으면 ${esc(S.email)}로 의뢰번호와 함께 보내 주세요. 인정되면 그 업체분 환불 또는 대체 업체 중에서 고르실 수 있습니다.</p>
+        <button class="btn btn-sm" type="submit">이의신청</button>
+      </form>`;
+    $("#detail").appendChild(box); box.scrollIntoView({ behavior: "smooth" });
+    box.querySelector("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      if (!f.claim.value.trim()) return f.claim.classList.add("invalid");
+      const { error } = await sb.from("disputes").insert({ request_id: r.id, response_id: responseId, kind: f.kind.value, claim: f.claim.value.trim() });
+      if (error) return toast(errMsg(error), "err");
+      toast("이의신청을 접수했습니다");
+      await loadList(); open(r.id);
+    };
+  }
+
+  $("#list").onclick = (e) => { const b = e.target.closest("[data-id]"); if (b) open(b.dataset.id); };
+  await loadList();
+  const pre = new URLSearchParams(location.search).get("id") || (reqs[0] && reqs[0].id);
+  if (pre) open(pre);
+})();
+</script>
+</body>
+</html>

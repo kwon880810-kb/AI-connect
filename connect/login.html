@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>로그인 | 윈-윈 커넥트</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="vendor/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/sb.js"></script>
+</head>
+<body class="rp-body">
+<header class="nav" id="nav"></header>
+<main class="page">
+  <div class="wrap auth-box">
+    <div class="tabbar" id="tabs">
+      <button data-t="login" class="on">로그인</button>
+      <button data-t="signup">회원가입</button>
+    </div>
+
+    <form class="form" id="loginForm" novalidate>
+      <h2 style="margin:0">로그인</h2>
+      <label>이메일<input name="email" type="email" autocomplete="email" required></label>
+      <label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="btn btn-block" type="submit">로그인</button>
+      <p class="form-msg" role="status"></p>
+    </form>
+
+    <form class="form" id="signupForm" novalidate hidden>
+      <h2 style="margin:0">회원가입</h2>
+      <div class="role-pick">
+        <label><input type="radio" name="role" value="demander" checked>수요자<small>만들 곳을 찾고 있어요</small></label>
+        <label><input type="radio" name="role" value="supplier">공급자<small>만들 수 있는 공장·업체예요 (무료)</small></label>
+      </div>
+      <label>이름 <i>*</i><input name="name" required autocomplete="name"></label>
+      <label>회사·브랜드명<input name="company" autocomplete="organization"></label>
+      <label>휴대폰 <i>*</i><input name="phone" type="tel" inputmode="tel" required placeholder="010-0000-0000" autocomplete="tel"></label>
+      <label>이메일 <i>*</i><input name="email" type="email" required autocomplete="email"></label>
+      <label>비밀번호 <i>*</i> <span class="hint">8자 이상</span><input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+      <label class="check"><input type="checkbox" name="agree" required><span><a href="terms.html" target="_blank" style="text-decoration:underline">이용약관</a>과 <a href="privacy.html" target="_blank" style="text-decoration:underline">개인정보처리방침</a>에 동의합니다. <i>*</i></span></label>
+      <p class="muted" id="supplierNote" hidden>공급자는 가입 후 사업자등록번호 확인을 거쳐야 의뢰를 볼 수 있습니다.</p>
+      <button class="btn btn-block" type="submit">가입하기</button>
+      <p class="form-msg" role="status"></p>
+    </form>
+  </div>
+</main>
+<footer class="foot" id="foot"></footer>
+
+<script>
+(function () {
+  const { sb, $, $$, errMsg, loadMe } = APP;
+  const q = new URLSearchParams(location.search);
+  const next = q.get("next");
+  const show = (t) => {
+    $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.t === t));
+    $("#loginForm").hidden = t !== "login"; $("#signupForm").hidden = t !== "signup";
+  };
+  $("#tabs").onclick = (e) => { const b = e.target.closest("button"); if (b) show(b.dataset.t); };
+  if (q.get("signup")) show("signup");
+  if (q.get("role") === "supplier") $('input[name=role][value=supplier]').checked = true;
+  const syncRole = () => ($("#supplierNote").hidden = $('input[name=role]:checked').value !== "supplier");
+  $$("input[name=role]").forEach((r) => (r.onchange = syncRole)); syncRole();
+
+  async function goHome() {
+    const m = await loadMe(true);
+    if (next) return (location.href = next);
+    const role = m.profile && m.profile.role;
+    location.href = role === "supplier" ? "supplier.html" : role === "admin" ? "admin.html" : "projects.html";
+  }
+
+  function check(form) {
+    let bad = null;
+    form.querySelectorAll("[required]").forEach((f) => {
+      const empty = f.type === "checkbox" ? !f.checked : !f.value.trim() || (f.minLength > 0 && f.value.length < f.minLength);
+      f.classList.toggle("invalid", empty); if (empty && !bad) bad = f;
+    });
+    if (bad) { bad.focus(); return false; }
+    return true;
+  }
+
+  $("#loginForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target, msg = f.querySelector(".form-msg");
+    if (!check(f)) return (msg.textContent = "이메일과 비밀번호를 입력하세요."), (msg.className = "form-msg err");
+    msg.textContent = "로그인 중…"; msg.className = "form-msg";
+    const { error } = await sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value });
+    if (error) { msg.textContent = error.message === "Invalid login credentials" ? "이메일 또는 비밀번호가 맞지 않습니다." : errMsg(error); msg.className = "form-msg err"; return; }
+    goHome();
+  };
+
+  $("#signupForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target, msg = f.querySelector(".form-msg");
+    if (!check(f)) return (msg.textContent = "표시된 항목을 확인하세요. 비밀번호는 8자 이상입니다."), (msg.className = "form-msg err");
+    msg.textContent = "가입 중…"; msg.className = "form-msg";
+    const role = $('input[name=role]:checked').value;
+    const { data, error } = await sb.auth.signUp({
+      email: f.email.value.trim(), password: f.password.value,
+      options: { data: { role, name: f.name.value.trim(), phone: f.phone.value.trim(), company: f.company.value.trim() },
+                 emailRedirectTo: location.origin + location.pathname.replace(/[^/]*$/, "") + (role === "supplier" ? "supplier.html" : "request.html") },
+    });
+    if (error) { msg.textContent = error.message.includes("registered") ? "이미 가입된 이메일입니다. 로그인해 주세요." : errMsg(error); msg.className = "form-msg err"; return; }
+    if (!data.session) {
+      msg.textContent = "가입 확인 메일을 보냈습니다. 메일의 링크를 누르면 가입이 끝납니다."; msg.className = "form-msg ok"; return;
+    }
+    goHome();
+  };
+})();
+</script>
+</body>
+</html>

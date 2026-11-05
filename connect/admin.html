@@ -4,410 +4,295 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>윈-윈 커넥트 관리자</title>
+<title>관리자 | 윈-윈 커넥트</title>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="css/style.css">
+<script src="vendor/supabase.js"></script>
 <script src="js/config.js"></script>
-<script src="js/report-view.js"></script>
-<style>
-  body { background: var(--bg-alt); }
-  .adm { max-width: 1200px; margin: 0 auto; padding: 24px 16px 80px; }
-  .adm-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
-  .adm-top h1 { font-size: 22px; margin-right: auto; }
-  .login { max-width: 380px; margin: 15vh auto; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-  .tabs button, .filters select { font: inherit; border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 14px; cursor: pointer; }
-  .tabs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
-  .cards { display: grid; gap: 12px; }
-  .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 8px; }
-  .card-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .card-top b { font-size: 17px; }
-  .card-top .when { margin-left: auto; color: var(--ink-3); font-size: 13px; }
-  .rid { font-size: 12px; color: var(--ink-3); font-family: ui-monospace, monospace; }
-  .kv { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--ink-2); font-size: 14px; }
-  .kv span b { color: var(--ink); font-weight: 600; }
-  .body { white-space: pre-wrap; background: var(--bg-alt); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin: 0; }
-  .qs { margin: 0; padding-left: 20px; font-size: 14px; color: var(--ink-2); }
-  .ctl { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .ctl select, .ctl input { font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
-  .ctl input { flex: 1; min-width: 180px; }
-  .rep-line { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--ink-2); background: var(--green-l); border-radius: 10px; padding: 8px 12px; }
-  .rep-line.draft { background: #fff3dc; }
-  .st { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--blue-l); color: var(--blue); }
-  .st-신규 { background: #ffe9e9; color: #d33; }
-  .st-연결완료, .st-정산완료 { background: var(--green-l); color: var(--green); }
-  .st-보류 { background: #eee; color: #777; }
-  .empty { color: var(--ink-3); text-align: center; padding: 40px; }
-  .note { color: var(--ink-3); font-size: 13px; }
-  .demo-bar { background: #fff3dc; color: #8a5300; text-align: center; padding: 8px; font-size: 14px; }
-
-  /* 리스트 편집기 */
-  .ed { position: fixed; inset: 0; background: var(--bg-alt); z-index: 50; overflow-y: auto; }
-  .ed-in { max-width: 980px; margin: 0 auto; padding: 20px 16px 120px; }
-  .ed-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-  .ed-top h2 { font-size: 20px; margin-right: auto; }
-  .box { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
-  .box h3 { font-size: 16px; margin: 0 0 10px; }
-  .eq { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
-  .eq span { color: var(--ink-3); font-size: 13px; width: 22px; flex: none; }
-  .eq input, .sup-grid input, .ans-row input, .sup-grid textarea, .addsup select {
-    font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 0; width: 100%; }
-  .x { border: 0; background: none; color: var(--ink-3); cursor: pointer; font-size: 15px; flex: none; }
-  .x:hover { color: #d33; }
-  .sup { border-top: 4px solid var(--green); }
-  .sup-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .sup-head b { margin-right: auto; }
-  .sup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-  .sup-grid label { font-size: 12px; color: var(--ink-3); display: block; }
-  .sup-grid .wide { grid-column: 1 / -1; }
-  .ans-row { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; padding: 8px 0; border-top: 1px solid var(--line); align-items: center; }
-  .ans-row .q { font-size: 14px; }
-  .ans-row input { grid-column: 1 / -1; }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-  .seg button { font: inherit; font-size: 13px; font-weight: 700; border: 0; background: #fff; padding: 5px 10px; cursor: pointer; color: var(--ink-3); border-left: 1px solid var(--line); }
-  .seg button:first-child { border-left: 0; }
-  .seg button.on.a-o { background: var(--green); color: #fff; }
-  .seg button.on.a-p { background: #e09100; color: #fff; }
-  .seg button.on.a-x { background: #d33; color: #fff; }
-  .seg button.on.a-n { background: var(--ink-3); color: #fff; }
-  .addsup { display: flex; gap: 8px; flex-wrap: wrap; }
-  .addsup select { flex: 1; min-width: 200px; width: auto; }
-  .ed-bar { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--line); z-index: 51; }
-  .ed-bar-in { max-width: 980px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .ed-bar label { display: flex; gap: 6px; align-items: center; font-size: 14px; margin-right: auto; }
-  .linkbox { display: none; }
-  .linkbox.show { display: block; }
-  .linkbox textarea { width: 100%; font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
-  .preview { background: var(--bg-alt); border-radius: 14px; padding: 4px 0; }
-  .preview .rp-head h1 { font-size: 22px; }
-  @media (max-width: 720px) { .sup-grid { grid-template-columns: 1fr 1fr; } }
-</style>
+<script src="js/sb.js"></script>
 </head>
-<body>
-
-<div class="demo-bar" id="demoBar" hidden>예시 모드입니다. 저장해도 실제로 기록되지 않습니다.</div>
-
-<div class="login form" id="login">
-  <h2>관리자 로그인</h2>
-  <p class="note">Apps Script의 ADMIN_TOKEN 값을 입력하세요. 이 기기에만 저장됩니다.</p>
-  <input id="token" type="password" placeholder="관리자 비밀번호">
-  <button class="btn btn-block" id="loginBtn">들어가기</button>
-  <p class="form-msg err" id="loginMsg"></p>
-  <p class="note"><a href="admin.html?demo=1" style="text-decoration:underline">예시 데이터로 둘러보기</a></p>
-</div>
-
-<div class="adm" id="app" hidden>
-  <div class="adm-top">
-    <h1>윈-윈 커넥트 접수 현황</h1>
-    <button class="btn btn-sm btn-ghost" id="reload">새로고침</button>
-    <button class="btn btn-sm btn-ghost" id="logout">로그아웃</button>
+<body class="rp-body">
+<header class="nav" id="nav"></header>
+<main class="page">
+  <div class="wrap" style="max-width:1280px">
+    <div class="page-head"><div><h1>관리자</h1><p>입금 확인 → 응답 확인·대리 입력 → 선정·리스트 전달 → 이의 처리 → 확정</p></div></div>
+    <div class="tabbar" id="tabs">
+      <button data-t="req" class="on">의뢰</button><button data-t="sup">공급자</button><button data-t="dis">이의신청</button><button data-t="price">요금 설정</button>
+    </div>
+    <div id="body"><p class="muted">불러오는 중…</p></div>
   </div>
-  <div class="tabs" id="tabs"></div>
-  <div class="tabs filters"><select id="filter"><option value="">전체 상태</option></select></div>
-  <div class="cards" id="list"></div>
-</div>
-
-<div class="ed" id="ed" hidden>
-  <div class="ed-in">
-    <div class="ed-top">
-      <h2 id="edTitle">공급자 리스트 작성</h2>
-      <button class="btn btn-sm btn-ghost" id="edClose">닫기</button>
-    </div>
-    <div class="box">
-      <h3>질문 (수요자 요청서 기준, 추가·수정 가능)</h3>
-      <div id="edQs"></div>
-      <div class="addsup" style="margin-top:8px">
-        <input id="edQNew" placeholder="질문 추가" style="flex:1;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:7px 10px">
-        <button class="btn btn-sm" id="edQAdd">추가</button>
-      </div>
-    </div>
-    <div id="edSups"></div>
-    <div class="box">
-      <h3>공급자 추가</h3>
-      <div class="addsup">
-        <select id="edPick"><option value="">등록 공급사에서 고르기</option></select>
-        <button class="btn btn-sm btn-s" id="edAddPick">추가</button>
-        <button class="btn btn-sm btn-ghost" id="edAddBlank">직접 입력</button>
-      </div>
-    </div>
-    <div class="box linkbox" id="edLink">
-      <h3>수요자에게 보낼 메시지</h3>
-      <textarea id="edMsg" rows="4" readonly></textarea>
-      <div class="ctl" style="margin-top:8px">
-        <button class="btn btn-sm" id="edCopy">복사</button>
-        <a class="btn btn-sm btn-ghost" id="edOpen" target="_blank" rel="noopener">링크 열어 보기</a>
-      </div>
-    </div>
-    <div class="box" id="edPrevBox" hidden>
-      <h3>미리보기 (수요자 화면)</h3>
-      <div class="preview" id="edPrev"></div>
-    </div>
-  </div>
-  <div class="ed-bar"><div class="ed-bar-in">
-    <label><input type="checkbox" id="edReveal"> 연락처 공개 (연결비 확인됨)</label>
-    <button class="btn btn-sm btn-ghost" id="edPreview">미리보기</button>
-    <button class="btn btn-sm btn-ghost" id="edSave">임시 저장</button>
-    <button class="btn btn-sm" id="edPublish">저장하고 링크 만들기</button>
-  </div></div>
-</div>
+</main>
+<footer class="foot" id="foot"></footer>
 
 <script>
-(function () {
-  const S = window.SITE;
-  const $ = (id) => document.getElementById(id);
-  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const parse = (s, d) => { try { return JSON.parse(s) || d; } catch (e) { return d; } };
-  const DEMO = new URLSearchParams(location.search).has("demo");
-  let token = "", db = null, tab = "의뢰";
-  try { token = localStorage.getItem("wwc_token") || ""; } catch (e) {}
+(async function () {
+  const { sb, S, esc, won, num, range, date, $, $$, toast, errMsg, catalog, requiredItems, requireLogin, reqStatus, badge, ans, rangeMark, signedUrl, SIDO } = APP;
+  const me = await requireLogin(["admin"]);
+  if (!me) return;
+  const cat = await catalog();
+  let tab = "req";
+  $("#tabs").onclick = (e) => { const b = e.target.closest("[data-t]"); if (!b) return; tab = b.dataset.t; $$("#tabs button").forEach((x) => x.classList.toggle("on", x === b)); show(); };
+  const show = () => ({ req: tabReq, sup: tabSup, dis: tabDis, price: tabPrice })[tab]();
+  const call = async (p, okMsg) => { const { error } = await p; if (error) { toast(errMsg(error), "err"); return false; } if (okMsg) toast(okMsg); return true; };
 
-  if (!S.endpoint && !DEMO) $("loginMsg").textContent = "js/config.js 의 endpoint 가 비어 있습니다. Apps Script를 먼저 연결하세요.";
+  // ======================= 의뢰 =======================
+  let reqs = [], reqFilter = "action", curReq = null;
+  const needsAction = (r) => (r.status === "draft" && r.submitted_at) || ["open", "selecting", "disputed"].includes(r.status) || (r.status === "delivered" && new Date(r.verify_until) < new Date());
+  async function tabReq() {
+    const { data, error } = await sb.from("requests").select("*").order("created_at", { ascending: false });
+    if (tab !== "req") return;
+    if (error) return ($("#body").innerHTML = `<p class="muted">${esc(errMsg(error))}</p>`);
+    reqs = data;
+    const shown = reqs.filter((r) => reqFilter === "all" || (reqFilter === "action" ? needsAction(r) : reqStatus(r)[0] === reqFilter));
+    $("#body").innerHTML = `
+      <div class="tabbar" id="rf">${[["action", "처리 필요"], ["all", "전체"], ["입금 대기", "입금 대기"], ["공급자 응답 받는 중", "응답 중"], ["리스트 전달 · 검증 중", "검증 중"], ["이의 처리 중", "이의"], ["확정", "확정"]]
+        .map(([k, l]) => `<button data-f="${k}" class="${reqFilter === k ? "on" : ""}">${l} ${reqs.filter((r) => k === "all" || (k === "action" ? needsAction(r) : reqStatus(r)[0] === k)).length}</button>`).join("")}</div>
+      <div class="split"><div class="rows" id="rl">${shown.map((r) => `
+        <button class="row-card ${curReq === r.id ? "on" : ""}" data-id="${r.id}"><div class="row-top">${badge(reqStatus(r))}<span class="muted">${esc(r.code || "작성 중")}</span><span class="right muted">${date(r.created_at)}</span></div>
+          <b>${esc(r.title)}</b><div class="row-meta"><span>${esc(cat.catName(r.major_id))}</span><span>${r.kind === "direct" ? "지정" : "일반"} · ${r.supplier_count}곳</span>${r.amount_total ? `<span>${won(r.amount_total)}</span>` : ""}</div></button>`).join("") || '<div class="panel muted">해당하는 의뢰가 없습니다.</div>'}</div>
+        <div id="rd"><div class="panel muted">의뢰를 고르세요.</div></div></div>`;
+    $("#rf").onclick = (e) => { const b = e.target.closest("[data-f]"); if (b) { reqFilter = b.dataset.f; tabReq(); } };
+    $("#rl").onclick = (e) => { const b = e.target.closest("[data-id]"); if (b) { curReq = b.dataset.id; $$("#rl .row-card").forEach((x) => x.classList.toggle("on", x === b)); openReq(curReq); } };
+    if (curReq && reqs.some((r) => r.id === curReq)) openReq(curReq);
+  }
 
-  // ---------- 서버 ----------
-  function load() {
-    if (DEMO) return Promise.resolve(demoData());
-    return new Promise((resolve, reject) => {
-      const cb = "cb" + Date.now();
-      const s = document.createElement("script");
-      window[cb] = (res) => { delete window[cb]; s.remove(); resolve(res); };
-      s.onerror = () => { delete window[cb]; s.remove(); reject(new Error("load")); };
-      s.src = S.endpoint + "?token=" + encodeURIComponent(token) + "&callback=" + cb;
-      document.body.appendChild(s);
+  async function openReq(id) {
+    const r = reqs.find((x) => x.id === id);
+    const d = $("#rd"); d.innerHTML = '<div class="panel muted">불러오는 중…</div>';
+    const [prof, items, files, rank, resps, pays, targets] = await Promise.all([
+      sb.from("profiles").select("*").eq("id", r.demander_id).maybeSingle(),
+      sb.from("request_items").select("*").eq("request_id", id),
+      sb.from("request_files").select("*").eq("request_id", id).order("sort"),
+      sb.rpc("rank_responses", { p_request: id }),
+      sb.from("responses").select("*").eq("request_id", id),
+      sb.from("payments").select("*").eq("request_id", id),
+      sb.from("request_targets").select("*").eq("request_id", id),
+    ]);
+    if (curReq !== id || tab !== "req") return;
+    const p = prof.data || {};
+    const itemLabel = (iid) => (cat.items.find((x) => x.id === iid) || {}).label || "";
+    const allResp = resps.data || [];
+    let html = `<div class="panel">
+      <div class="row-top">${badge(reqStatus(r))}<span class="muted">${esc(r.code || "")}</span>${r.kind === "direct" ? '<span class="sbadge s-amber">지정 의뢰</span>' : ""}</div>
+      <h2 style="margin-top:8px">${esc(r.title)}</h2>
+      <dl class="kv-grid">
+        <div><dt>수요자</dt><dd>${esc(p.name || "")} ${p.company ? "· " + esc(p.company) : ""}</dd></div>
+        <div><dt>연락처</dt><dd>${esc(p.phone || "-")}<br><span style="font-weight:400">${esc(p.email || "")}</span></dd></div>
+        <div><dt>분야</dt><dd>${esc(cat.catName(r.major_id))}${r.minor_id ? " › " + esc(cat.catName(r.minor_id)) : ""}</dd></div>
+        <div><dt>수량</dt><dd>${range(r.qty_min, r.qty_max, "개")}</dd></div>
+        <div><dt>단가</dt><dd>${range(r.price_min, r.price_max, "원")}</dd></div>
+        <div><dt>납기</dt><dd>${range(r.due_min_days, r.due_max_days, "일")}</dd></div>
+        <div><dt>금액</dt><dd>${won(r.amount_total)}</dd></div>
+        <div><dt>응답 마감</dt><dd>${date(r.respond_until, true)}</dd></div>
+      </dl>
+      ${(items.data || []).length ? `<h3>추가 조건</h3><div class="chips">${items.data.map((x) => `<span class="chip">${esc(itemLabel(x.item_id))}</span>`).join("")}</div>` : ""}
+      ${r.description ? `<h3>자세한 내용</h3><p style="white-space:pre-wrap;margin:0">${esc(r.description)}</p>` : ""}
+      ${(files.data || []).length ? `<h3>첨부</h3><div class="files">${files.data.map((x) => `<div class="file-row"><a class="fname" href="#" data-file="${esc(x.path)}" style="text-decoration:underline">${esc(x.file_name)}</a><span class="sbadge ${x.visibility === "all" ? "s-blue" : "s-green"}">${x.visibility === "all" ? "모두 공개" : "선정사 공개"}</span></div>`).join("")}</div>` : ""}
+    </div>`;
+
+    if (r.status === "draft" && r.submitted_at) {
+      html += `<div class="panel"><h2>입금 확인</h2><p>결제 금액 <b>${won(r.amount_total)}</b> · 접수 ${date(r.submitted_at, true)}</p>
+        <div class="row2"><label class="muted">결제 방법<input id="payPg" value="bank" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px"></label>
+        <label class="muted">거래번호·입금자명<input id="payTid" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px"></label></div>
+        <button class="btn btn-sm" id="confirmPay" style="margin-top:10px">입금 확인 → 공급자에게 공개</button></div>`;
+    }
+    if (["open", "selecting", "delivered", "disputed", "confirmed"].includes(r.status)) {
+      const rk = rank.data || [];
+      const canSelect = ["open", "selecting"].includes(r.status);
+      html += `<div class="panel"><h2>응답 순위 <span class="muted" style="font-weight:400;font-size:14px">필수 ✕ 업체는 아래로 · 적합도 70% + 신뢰도 30%</span></h2>
+        ${r.kind === "direct" ? `<p class="muted" style="margin:0 0 8px">지정 공급사 ${(targets.data || []).length}곳 · 응답 대기 ${allResp.filter((x) => x.status === "invited").length}곳 (무응답·필수 불일치는 그 업체분 환불)</p>` : ""}
+        ${rk.length ? `<div class="table-wrap"><table class="data"><tr>${canSelect ? "<th>선정</th>" : ""}<th>업체</th><th>적합도</th><th>신뢰도</th><th>순위점수</th><th>필수</th><th>수량</th><th>단가</th><th>납기</th><th>상태</th><th></th></tr>
+          ${rk.map((x) => { const rs = allResp.find((y) => y.id === x.response_id) || {}; return `<tr>
+            ${canSelect ? `<td><input type="checkbox" data-sel="${x.response_id}" ${x.has_required_x ? "" : ""}></td>` : ""}
+            <td><b>${esc(x.supplier_label)}</b>${rs.offline_supplier_id ? ' <span class="sbadge s-gray">대리</span>' : ""}</td>
+            <td>${x.fit_pct == null ? "-" : num(x.fit_pct) + "%"}</td><td>${x.trust ?? "-"}</td><td><b>${num(x.rank_score)}</b></td>
+            <td>${x.has_required_x ? ans("X") : ans("O")}</td>
+            <td>${range(rs.qty_min, rs.qty_max)} ${ans(rangeMark(r.qty_min, r.qty_max, rs.qty_min, rs.qty_max))}</td>
+            <td>${range(rs.price_min, rs.price_max)} ${ans(rangeMark(r.price_min, r.price_max, rs.price_min, rs.price_max))}</td>
+            <td>${range(rs.due_min_days, rs.due_max_days)} ${ans(rangeMark(r.due_min_days, r.due_max_days, rs.due_min_days, rs.due_max_days))}</td>
+            <td>${esc({ invited: "응답 대기", submitted: "제출", selected: "선정", not_selected: "미선정" }[rs.status] || rs.status || "")}</td><td><button class="btn btn-sm btn-ghost" data-view="${x.response_id}">보기</button></td></tr>`; }).join("")}</table></div>` : '<p class="muted">아직 응답이 없습니다. 비회원 공급자에게 연락해 대리 입력할 수 있습니다.</p>'}
+        <div id="respView"></div>
+        ${canSelect ? `<div class="ctl" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          ${r.status === "open" ? '<button class="btn btn-sm btn-ghost" id="closeResp">응답 마감 (선정 중으로)</button>' : ""}
+          <button class="btn btn-sm btn-ghost" id="proxyBtn">비회원 공급자 대리 입력</button>
+          <button class="btn btn-sm" id="deliverBtn">선택한 업체로 리스트 전달</button></div>` : ""}
+        <div id="proxyBox"></div></div>`;
+    }
+    if (["delivered", "disputed"].includes(r.status)) {
+      html += `<div class="panel"><h2>검증기간</h2><p>리스트 전달 ${date(r.delivered_at, true)} · 검증 종료 ${date(r.verify_until, true)}</p>
+        <button class="btn btn-sm" id="confirmReq">확정 처리</button> <span class="muted">처리 중인 이의신청이 없을 때만 확정됩니다. 문제없이 통과한 공급자는 신뢰도가 회복됩니다(+1).</span></div>`;
+    }
+    if ((pays.data || []).length) {
+      const pay = pays.data[0];
+      const rf = await sb.from("refunds").select("*").eq("payment_id", pay.id);
+      const refunded = (rf.data || []).reduce((s, x) => s + x.amount, 0);
+      html += `<div class="panel"><h2>결제·환불</h2><p>결제 ${won(pay.amount)} (${esc(pay.pg)} ${esc(pay.pg_tid || "")}) · ${date(pay.paid_at, true)} · 환불 합계 ${won(refunded)}</p>
+        ${(rf.data || []).map((x) => `<p class="muted" style="margin:2px 0">${date(x.created_at)} · ${won(x.amount)} · ${esc(x.reason)}</p>`).join("")}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><input id="rfAmt" type="number" placeholder="환불 금액" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px;width:140px">
+          <select id="rfReason" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px"><option value="no_response">지정사 무응답</option><option value="direct_mismatch">지정사 필수 불일치</option><option value="shortfall">업체 부족</option><option value="dispute">이의신청 인정</option></select>
+          <button class="btn btn-sm btn-ghost" id="rfBtn" data-pay="${pay.id}">환불 기록</button></div>
+        <p class="muted" style="margin:6px 0 0">업체분 환불액 = 결제금액 × (환불 업체 수 ÷ ${r.supplier_count}) = 1곳당 ${won(Math.floor(pay.amount / r.supplier_count))}. 실제 환불(카드 취소·계좌 송금)은 따로 처리하고 여기에 기록합니다.</p></div>`;
+    }
+    d.innerHTML = html;
+
+    d.querySelectorAll("[data-file]").forEach((a) => (a.onclick = async (e) => { e.preventDefault(); const u = await signedUrl(a.dataset.file); if (u) window.open(u, "_blank"); }));
+    const on = (sel, fn) => { const el = d.querySelector(sel); if (el) el.onclick = fn; };
+    on("#confirmPay", async () => { if (await call(sb.rpc("admin_confirm_payment", { p_request: id, p_pg: $("#payPg").value || "bank", p_tid: $("#payTid").value || null }), "입금 확인, 공급자에게 공개했습니다")) tabReq(); });
+    on("#closeResp", async () => { if (await call(sb.from("requests").update({ status: "selecting" }).eq("id", id), "응답을 마감했습니다")) tabReq(); });
+    on("#deliverBtn", async () => {
+      const ids = $$("[data-sel]:checked", d).map((x) => x.dataset.sel);
+      if (!ids.length) return toast("선정할 업체를 고르세요", "err");
+      if (ids.length !== r.supplier_count && !confirm(`요청 업체 수는 ${r.supplier_count}곳인데 ${ids.length}곳을 골랐습니다. 이대로 전달할까요? (부족분은 환불 기록 필요)`)) return;
+      if (await call(sb.rpc("admin_deliver", { p_request: id, p_selected: ids }), "리스트를 전달했습니다")) tabReq();
     });
-  }
-  function post(body) {
-    if (DEMO) return Promise.resolve();
-    // Apps Script는 CORS 응답을 주지 않아 결과를 읽을 수 없습니다. 저장 후 새로고침으로 확인합니다.
-    return fetch(S.endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(Object.assign({ token }, body)) });
-  }
-  const reportUrl = (r) => new URL("report.html?id=" + encodeURIComponent(r["의뢰번호"]) + "&k=" + encodeURIComponent(r["리포트키"]), location.href).href;
-
-  async function start() {
-    try {
-      const res = await load();
-      if (!res.ok) throw new Error(res.error);
-      db = res;
-      if (!DEMO) try { localStorage.setItem("wwc_token", token); } catch (e) {}
-      $("login").hidden = true; $("app").hidden = false; $("demoBar").hidden = !DEMO;
-      const f = $("filter").value;
-      $("filter").innerHTML = '<option value="">전체 상태</option>' + res.statuses.map((s) => `<option ${s === f ? "selected" : ""}>${s}</option>`).join("");
-      render();
-    } catch (e) {
-      $("login").hidden = false; $("app").hidden = true;
-      $("loginMsg").textContent = e.message === "unauthorized" ? "비밀번호가 맞지 않습니다." : "불러오지 못했습니다. endpoint 주소를 확인하세요.";
-    }
+    on("#confirmReq", async () => { if (await call(sb.rpc("admin_confirm_request", { p_request: id }), "확정했습니다")) tabReq(); });
+    on("#rfBtn", async (e) => {
+      const amt = +$("#rfAmt").value; if (!amt) return toast("환불 금액을 입력하세요", "err");
+      if (await call(sb.from("refunds").insert({ payment_id: e.target.dataset.pay, amount: amt, reason: $("#rfReason").value }), "환불을 기록했습니다")) openReq(id);
+    });
+    d.querySelectorAll("[data-view]").forEach((b) => (b.onclick = () => viewResp(r, allResp.find((x) => x.id === b.dataset.view))));
+    on("#proxyBtn", () => proxyForm(r, items.data || []));
   }
 
-  // ---------- 목록 ----------
-  function render() {
-    $("tabs").innerHTML = Object.keys(db.data).map((k) => {
-      const n = db.data[k].filter((r) => r["상태"] === "신규").length;
-      return `<button class="${k === tab ? "on" : ""}" data-tab="${k}">${k} ${db.data[k].length}건${n ? ` · 신규 ${n}` : ""}</button>`;
-    }).join("");
-    const f = $("filter").value;
-    const rows = db.data[tab].filter((r) => !f || r["상태"] === f).slice().reverse();
-    const skip = ["_row", "의뢰번호", "개인정보동의", "접수일시", "상태", "메모", "내용", "소개", "회사", "업체명", "품목", "공정",
-                  "질문", "리포트", "연락처공개", "리포트제공일", "열람기록", "리포트키"];
-    $("list").innerHTML = rows.length ? rows.map((r) => {
-      const qs = parse(r["질문"], []);
-      const rep = parse(r["리포트"], null);
-      const nSup = rep && rep.suppliers ? rep.suppliers.length : 0;
-      return `
-      <article class="card" data-row="${r._row}">
-        <div class="card-top">
-          <span class="st st-${esc(r["상태"])}">${esc(r["상태"] || "신규")}</span>
-          <b>${esc(r["품목"] || r["공정"])}</b>
-          <span>${esc(r["회사"] || r["업체명"])}</span>
-          ${r["의뢰번호"] ? `<span class="rid">${esc(r["의뢰번호"])}</span>` : ""}
-          <span class="when">${esc(r["접수일시"])}</span>
-        </div>
-        <div class="kv">${Object.keys(r).filter((k) => !skip.includes(k) && r[k] !== "" && r[k] != null).map((k) => {
-          const v = esc(r[k]);
-          const val = k === "연락처" ? `<a href="tel:${v.replace(/[^0-9+]/g, "")}">${v}</a>` : k === "이메일" ? `<a href="mailto:${v}">${v}</a>` : v;
-          return `<span>${k} <b>${val}</b></span>`;
-        }).join("")}</div>
-        ${qs.length ? `<ol class="qs">${qs.map((q) => `<li>${esc(q)}</li>`).join("")}</ol>` : ""}
-        ${(r["내용"] || r["소개"]) ? `<p class="body">${esc(r["내용"] || r["소개"])}</p>` : ""}
-        ${tab === "의뢰" && rep ? `<div class="rep-line ${r["리포트제공일"] ? "" : "draft"}">
-            공급자 ${nSup}곳 · ${r["리포트제공일"] ? "제공 " + esc(r["리포트제공일"]) : "임시 저장"} · 연락처 ${r["연락처공개"] === "Y" ? "공개" : "비공개"}
-            ${r["열람기록"] ? ` · 열람 ${String(r["열람기록"]).split("\n").filter(String).length}회 (최근 ${esc(String(r["열람기록"]).split("\n").filter(String).pop())})` : ""}
-          </div>` : ""}
-        <div class="ctl">
-          <select class="setStatus">${db.statuses.map((s) => `<option ${s === r["상태"] ? "selected" : ""}>${s}</option>`).join("")}</select>
-          <input class="setMemo" placeholder="메모 (견적, 정산액 등)" value="${esc(r["메모"])}">
-          <button class="btn btn-sm save">저장</button>
-          ${tab === "의뢰" ? `<button class="btn btn-sm btn-s edit">${rep ? "공급자 리스트 수정" : "공급자 리스트 작성"}</button>` : ""}
-        </div>
-      </article>`;
-    }).join("") : '<p class="empty">접수된 내용이 없습니다.</p>';
+  async function viewResp(r, x) {
+    const [a, s, o] = await Promise.all([
+      sb.from("response_answers").select("*").eq("response_id", x.id),
+      x.supplier_id ? sb.from("suppliers").select("*").eq("id", x.supplier_id).maybeSingle() : { data: null },
+      x.offline_supplier_id ? sb.from("offline_suppliers").select("*").eq("id", x.offline_supplier_id).maybeSingle() : { data: null },
+    ]);
+    const sup = s.data || o.data || {};
+    const itemLabel = (iid) => (cat.items.find((y) => y.id === iid) || {}).label || "";
+    $("#respView").innerHTML = `<div class="panel" style="margin-top:12px;background:var(--bg-alt)">
+      <h3 style="margin-top:0">${esc(sup.company_name || "")} <span class="muted" style="font-weight:400">${esc(sup.contact_name || "")} ${esc(sup.contact_phone || "")} · ${esc(sup.region_sido || "")}</span></h3>
+      <ul class="rp-checks">${(a.data || []).map((y) => `<li><span class="rp-q">${esc(itemLabel(y.item_id))}${y.checked_via ? ` <span class="muted">(${esc(y.checked_via)} 확인)</span>` : ""}</span>${ans(y.value)}${y.note ? `<span class="rp-note">${esc(y.note)}</span>` : ""}</li>`).join("")}</ul>
+      ${x.sample_cost ? `<p class="rp-memo"><b>샘플</b> ${esc(x.sample_cost)}</p>` : ""}${x.memo ? `<p class="rp-memo"><b>메모</b> ${esc(x.memo)}</p>` : ""}
+      <p class="muted" style="margin:6px 0 0">인허가 서약 ${x.license_pledge ? "✓" : "✕"} · 제출 ${date(x.submitted_at, true)}</p></div>`;
   }
 
-  // ---------- 리스트 편집기 ----------
-  let ed = null; // { row, questions, suppliers }
-  const ANS_KEYS = [["O", "● 가능", "a-o"], ["P", "▲ 조건부", "a-p"], ["X", "✕ 불가", "a-x"], ["", "미확인", "a-n"]];
-  const FIELDS = [["name", "업체명"], ["person", "담당자"], ["phone", "연락처"], ["email", "이메일"], ["region", "지역"], ["price", "단가"], ["moq", "MOQ"], ["due", "납기"]];
-
-  function openEditor(r) {
-    const rep = parse(r["리포트"], null);
-    ed = {
-      r, row: r._row,
-      questions: rep && rep.questions ? rep.questions.slice() : parse(r["질문"], []).slice(),
-      suppliers: rep && rep.suppliers ? rep.suppliers.map((s) => Object.assign({}, s, { answers: (s.answers || []).map((a) => Object.assign({}, a)) })) : [],
+  // 비회원 공급자 대리 입력 (전화로 확인한 내용)
+  function proxyForm(r, reqItems) {
+    const qItems = requiredItems(cat, r.major_id).concat(cat.items.filter((x) => reqItems.some((y) => y.item_id === x.id)));
+    $("#proxyBox").innerHTML = `<form class="panel form" id="pxForm" novalidate style="margin-top:12px;gap:12px;background:var(--bg-alt)">
+      <h3 style="margin:0">비회원 공급자 대리 입력</h3>
+      <div class="row2"><label>업체명 <i>*</i><input name="company_name" required></label><label>지역<select name="region_sido"><option value="">선택</option>${SIDO.map((s) => `<option>${s}</option>`).join("")}</select></label></div>
+      <div class="row2"><label>담당자<input name="contact_name"></label><label>연락처 <i>*</i><input name="contact_phone" required></label></div>
+      <div class="row3">
+        <label>수량<div class="range-in"><input name="qty_min" type="number" required placeholder="최소"><span>~</span><input name="qty_max" type="number" placeholder="최대"></div></label>
+        <label>단가<div class="range-in"><input name="price_min" type="number" required placeholder="최소"><span>~</span><input name="price_max" type="number" placeholder="최대"></div></label>
+        <label>생산 기간(일)<div class="range-in"><input name="due_min" type="number" required placeholder="최소"><span>~</span><input name="due_max" type="number" placeholder="최대"></div></label>
+      </div>
+      <label>확인 방법<select name="via"><option>전화</option><option>문자</option><option>방문</option><option>이메일</option></select></label>
+      ${qItems.map((x) => `<div class="ans-edit" data-item="${x.id}"><span>${esc(x.label)}</span><span class="seg">${["O", "P", "X"].map((k) => `<button type="button" data-a="${k}" class="${{ O: "a-o", P: "a-p", X: "a-x" }[k]}">${{ O: "● 가능", P: "▲ 조건부", X: "✕ 불가" }[k]}</button>`).join("")}</span><input type="text" data-note placeholder="메모"></div>`).join("")}
+      <label>공장 메모 (수요자에게 보임)<textarea name="memo" rows="2"></textarea></label>
+      <button class="btn btn-sm" type="submit">대리 입력 저장</button></form>`;
+    const f = $("#pxForm");
+    f.querySelectorAll(".seg").forEach((sg) => (sg.onclick = (e) => { const b = e.target.closest("[data-a]"); if (b) sg.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); }));
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const n = (k) => (f[k].value === "" ? null : +f[k].value);
+      if (["company_name", "contact_phone", "qty_min", "price_min", "due_min"].some((k) => !f[k].value)) return toast("필수 칸을 채우세요", "err");
+      const ans = $$(".ans-edit", f).map((el) => ({ item_id: +el.dataset.item, value: (el.querySelector(".seg .on") || { dataset: { a: "N" } }).dataset.a, note: el.querySelector("[data-note]").value || null }));
+      try {
+        const o = await sb.from("offline_suppliers").insert({ company_name: f.company_name.value, contact_name: f.contact_name.value || null, contact_phone: f.contact_phone.value, region_sido: f.region_sido.value || null, created_by: me.user.id }).select("id").single();
+        if (o.error) throw o.error;
+        const x = await sb.from("responses").insert({ request_id: r.id, offline_supplier_id: o.data.id, proxy_by: me.user.id, status: "submitted", submitted_at: new Date().toISOString(), license_pledge: true,
+          qty_min: n("qty_min"), qty_max: n("qty_max") ?? n("qty_min"), price_min: n("price_min"), price_max: n("price_max") ?? n("price_min"), due_min_days: n("due_min"), due_max_days: n("due_max") ?? n("due_min"), memo: f.memo.value || null }).select("id").single();
+        if (x.error) throw x.error;
+        const now = new Date().toISOString();
+        const a = await sb.from("response_answers").insert(ans.map((y) => ({ ...y, response_id: x.data.id, checked_at: now, checked_via: f.via.value })));
+        if (a.error) throw a.error;
+        toast("대리 입력을 저장했습니다"); openReq(r.id);
+      } catch (err) { toast(errMsg(err), "err"); }
     };
-    $("edTitle").textContent = `${r["품목"] || "의뢰"} · ${r["의뢰번호"] || ""}`;
-    $("edReveal").checked = r["연락처공개"] === "Y";
-    $("edPick").innerHTML = '<option value="">등록 공급사에서 고르기</option>' + (db.data["공급사"] || []).map((s, i) =>
-      `<option value="${i}">${esc(s["업체명"])} · ${esc(s["분야"])} · ${esc(s["공정"])}</option>`).join("");
-    $("edLink").classList.toggle("show", !!r["리포트제공일"]);
-    if (r["리포트제공일"]) setLink(r);
-    $("edPrevBox").hidden = true;
-    drawEditor();
-    $("ed").hidden = false; document.body.style.overflow = "hidden";
-  }
-  function closeEditor() { $("ed").hidden = true; document.body.style.overflow = ""; ed = null; }
-
-  function drawEditor() {
-    $("edQs").innerHTML = ed.questions.map((q, i) => `
-      <div class="eq"><span>${i + 1}.</span><input data-q="${i}" value="${esc(q)}"><button class="x" data-delq="${i}" title="삭제">✕</button></div>`).join("")
-      || '<p class="note">질문이 없습니다. 아래에서 추가하세요.</p>';
-    $("edSups").innerHTML = ed.suppliers.map((s, si) => `
-      <div class="box sup" data-s="${si}">
-        <div class="sup-head"><b>공급자 ${si + 1}</b><button class="x" data-dels="${si}" title="삭제">✕ 삭제</button></div>
-        <div class="sup-grid">
-          ${FIELDS.map(([k, l]) => `<div><label>${l}</label><input data-f="${k}" value="${esc(s[k])}"></div>`).join("")}
-          <div class="wide"><label>상담 메모 (수요자에게 보임)</label><textarea data-f="memo" rows="2">${esc(s.memo)}</textarea></div>
-        </div>
-        ${ed.questions.map((q, qi) => {
-          const a = (s.answers[qi] = s.answers[qi] || { a: "", note: "" });
-          return `<div class="ans-row" data-qi="${qi}">
-            <span class="q">${qi + 1}. ${esc(q)}</span>
-            <span class="seg">${ANS_KEYS.map(([k, l, c]) => `<button type="button" class="${c} ${a.a === k ? "on" : ""}" data-a="${k}">${l}</button>`).join("")}</span>
-            <input data-note placeholder="메모 (예: 500개부터, 샘플비 5만 원)" value="${esc(a.note)}">
-          </div>`;
-        }).join("")}
-      </div>`).join("");
   }
 
-  $("edQs").addEventListener("input", (e) => { const i = e.target.dataset.q; if (i !== undefined) ed.questions[+i] = e.target.value; });
-  $("edQs").addEventListener("change", drawEditor);
-  $("edQs").addEventListener("click", (e) => {
-    const i = e.target.dataset.delq; if (i === undefined) return;
-    if (!confirm("이 질문과 각 공급자의 답을 지울까요?")) return;
-    ed.questions.splice(+i, 1); ed.suppliers.forEach((s) => s.answers.splice(+i, 1)); drawEditor();
-  });
-  $("edQAdd").onclick = () => { const v = $("edQNew").value.trim(); if (!v) return; ed.questions.push(v); $("edQNew").value = ""; drawEditor(); };
-  $("edQNew").onkeydown = (e) => { if (e.key === "Enter") $("edQAdd").click(); };
-
-  $("edSups").addEventListener("input", (e) => {
-    const box = e.target.closest("[data-s]"); if (!box) return;
-    const s = ed.suppliers[+box.dataset.s];
-    if (e.target.dataset.f) s[e.target.dataset.f] = e.target.value;
-    if (e.target.hasAttribute("data-note")) s.answers[+e.target.closest("[data-qi]").dataset.qi].note = e.target.value;
-  });
-  $("edSups").addEventListener("click", (e) => {
-    const box = e.target.closest("[data-s]"); if (!box) return;
-    const si = +box.dataset.s;
-    if (e.target.dataset.dels !== undefined) { if (confirm("이 공급자를 리스트에서 뺄까요?")) { ed.suppliers.splice(si, 1); drawEditor(); } return; }
-    const b = e.target.closest("[data-a]"); if (!b) return;
-    const qi = +b.closest("[data-qi]").dataset.qi;
-    ed.suppliers[si].answers[qi].a = b.dataset.a;
-    b.parentNode.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
-  });
-  $("edAddPick").onclick = () => {
-    const v = $("edPick").value; if (v === "") return;
-    const p = db.data["공급사"][+v];
-    ed.suppliers.push({ name: p["업체명"], person: p["이름"], phone: p["연락처"], email: p["이메일"], region: p["지역"], moq: p["MOQ"], answers: [] });
-    drawEditor(); $("edPick").value = "";
-  };
-  $("edAddBlank").onclick = () => { ed.suppliers.push({ answers: [] }); drawEditor(); };
-
-  function reportData() {
-    const n = ed.questions.length;
-    return { questions: ed.questions.map((q) => q.trim()),
-             suppliers: ed.suppliers.map((s) => Object.assign({}, s, { answers: s.answers.slice(0, n) })) };
-  }
-  $("edPreview").onclick = () => {
-    const r = ed.r, rep = reportData(), reveal = $("edReveal").checked;
-    const view = { id: r["의뢰번호"], item: r["품목"], cat: r["분야"], qty: r["수량"], due: r["납기"], date: r["리포트제공일"] || "", reveal,
-      questions: rep.questions, suppliers: rep.suppliers.map((s, i) => reveal ? s : Object.assign({}, s, { name: "공급사 " + String.fromCharCode(65 + i), person: "", phone: "", email: "" })) };
-    ReportView.render($("edPrev"), view);
-    $("edPrevBox").hidden = false; $("edPrevBox").scrollIntoView({ behavior: "smooth" });
-  };
-
-  function setLink(r) {
-    const url = reportUrl(r);
-    $("edMsg").value = `[${S.brand}] 요청하신 "${r["품목"]}" 공급자 리스트입니다.\n업체별로 질문에 얼마나 맞는지 체크해 두었습니다.\n${url}\n문의 ${S.phone}`;
-    $("edOpen").href = url;
-    $("edLink").classList.add("show");
-  }
-  async function save(publish) {
-    if (publish && !ed.suppliers.length) { alert("공급자를 1곳 이상 추가하세요."); return; }
-    if (publish && ed.suppliers.some((s) => !String(s.name || "").trim())) { alert("업체명이 비어 있는 공급자가 있습니다."); return; }
-    const btn = publish ? $("edPublish") : $("edSave");
-    btn.disabled = true;
-    const rep = reportData(), reveal = $("edReveal").checked;
-    await post({ action: "saveReport", sheet: "의뢰", row: ed.row, report: rep, reveal, publish });
-    // 화면 상태 갱신
-    const r = ed.r;
-    r["리포트"] = JSON.stringify(rep); r["연락처공개"] = reveal ? "Y" : "N";
-    if (publish && !r["리포트제공일"]) {
-      const d = new Date(), z = (n) => String(n).padStart(2, "0");
-      r["리포트제공일"] = `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
-      if (["신규", "확인중", "업체수배"].includes(r["상태"])) r["상태"] = "리스트전달";
-    }
-    if (publish) setLink(r);
-    btn.disabled = false;
-    btn.textContent = "저장됨 ✓"; setTimeout(() => (btn.textContent = publish ? "저장하고 링크 만들기" : "임시 저장"), 1500);
-    render();
-  }
-  $("edSave").onclick = () => save(false);
-  $("edPublish").onclick = () => save(true);
-  $("edCopy").onclick = async () => {
-    try { await navigator.clipboard.writeText($("edMsg").value); $("edCopy").textContent = "복사됨 ✓"; }
-    catch (e) { $("edMsg").select(); document.execCommand("copy"); $("edCopy").textContent = "복사됨 ✓"; }
-    setTimeout(() => ($("edCopy").textContent = "복사"), 1500);
-  };
-  $("edClose").onclick = () => { if (confirm("저장하지 않은 내용은 사라집니다. 닫을까요?")) closeEditor(); };
-
-  // ---------- 이벤트 ----------
-  $("loginBtn").onclick = () => { token = $("token").value.trim(); start(); };
-  $("token").onkeydown = (e) => { if (e.key === "Enter") $("loginBtn").click(); };
-  $("reload").onclick = start;
-  $("logout").onclick = () => { try { localStorage.removeItem("wwc_token"); } catch (e) {} location.href = "admin.html"; };
-  $("filter").onchange = render;
-  $("tabs").onclick = (e) => { const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; render(); } };
-  $("list").onclick = async (e) => {
-    const card = e.target.closest(".card"); if (!card) return;
-    const row = +card.dataset.row, r = db.data[tab].find((x) => x._row === row);
-    if (e.target.classList.contains("edit")) return openEditor(r);
-    if (!e.target.classList.contains("save")) return;
-    const status = card.querySelector(".setStatus").value, memo = card.querySelector(".setMemo").value;
-    e.target.disabled = true; e.target.textContent = "저장 중";
-    await post({ action: "status", sheet: tab, row, status, memo });
-    r["상태"] = status; r["메모"] = memo;
-    render();
-  };
-
-  // ---------- 예시 데이터 ----------
-  function demoData() {
-    return { ok: true, statuses: ["신규", "확인중", "업체수배", "리스트전달", "연결완료", "정산완료", "보류"], data: {
-      "의뢰": [
-        { _row: 2, "의뢰번호": "R261105-001", "접수일시": "2026-11-05 10:12", "상태": "신규", "회사": "멍멍상회(예시)", "이름": "홍길동", "연락처": "010-0000-0000",
-          "분야": "소량 OEM·ODM 제조", "품목": "강아지 간식 파우치", "수량": "1,000개", "예산": "개당 700원 이하", "납기": "6주 이내",
-          "질문": JSON.stringify(["최소 주문 수량(MOQ)이 우리 수량에 맞나요?", "샘플을 먼저 만들 수 있나요? (비용·기간)", "필요한 인증(HACCP, KC 등)이 있나요?"]),
-          "내용": "닭가슴살 져키, 50g 파우치", "리포트키": "demo" },
-      ],
-      "공급사": [
-        { _row: 2, "접수일시": "2026-11-04 15:00", "상태": "신규", "업체명": "가나식품(예시)", "이름": "김 실장", "연락처": "010-0000-0000", "분야": "소량 OEM·ODM 제조", "지역": "경기 김포", "공정": "육포·져키 건조, 파우치 충진", "MOQ": "500개" },
-        { _row: 3, "접수일시": "2026-11-04 16:00", "상태": "신규", "업체명": "다라푸드(예시)", "이름": "이 팀장", "연락처": "010-0000-0000", "분야": "소량 OEM·ODM 제조", "지역": "충북 음성", "공정": "반려동물 간식 OEM", "MOQ": "1,000개" },
-      ],
-    } };
+  // ======================= 공급자 =======================
+  async function tabSup() {
+    const { data, error } = await sb.from("suppliers").select("*").order("created_at", { ascending: false });
+    if (error) return ($("#body").innerHTML = `<p class="muted">${esc(errMsg(error))}</p>`);
+    const scores = await Promise.all(data.map((s) => sb.rpc("trust_score_of", { p_supplier: s.id })));
+    if (tab !== "sup") return;
+    $("#body").innerHTML = `<div class="note info" style="margin-bottom:12px">사업자 확인: 국세청 홈택스 '사업자등록 상태조회'에서 번호를 조회해 계속사업자인지 확인한 뒤 '확인 완료'를 누르세요. (국세청 API 연동 전 임시 절차)</div>
+      <div class="table-wrap"><table class="data"><tr><th>업체</th><th>사업자번호</th><th>담당·연락처</th><th>지역</th><th>가입</th><th>신뢰도</th><th>상태</th><th></th></tr>
+      ${data.map((s, i) => `<tr><td><b>${esc(s.company_name)}</b><br><span class="muted">${esc(s.ceo_name || "")}</span></td>
+        <td>${esc(s.biz_no.replace(/(\d{3})(\d{2})(\d{5})/, "$1-$2-$3"))}</td><td>${esc(s.contact_name || "")}<br>${esc(s.contact_phone || "")}</td>
+        <td>${esc(s.region_sido || "")}</td><td>${date(s.created_at)}</td><td>${scores[i].data ?? "-"}</td>
+        <td>${s.biz_verified_at ? '<span class="sbadge s-green">확인 완료</span>' : '<span class="sbadge s-amber">확인 대기</span>'} ${s.is_restricted ? '<span class="sbadge s-red">응답 제한</span>' : ""}</td>
+        <td style="white-space:nowrap">${s.biz_verified_at ? "" : `<button class="btn btn-sm" data-verify="${s.id}">확인 완료</button>`}
+          <button class="btn btn-sm btn-ghost" data-restrict="${s.id}" data-v="${s.is_restricted ? "0" : "1"}">${s.is_restricted ? "제한 해제" : "응답 제한"}</button></td></tr>`).join("") || '<tr><td colspan="8" class="muted">가입한 공급자가 없습니다.</td></tr>'}</table></div>`;
+    $$("[data-verify]").forEach((b) => (b.onclick = async () => { if (await call(sb.from("suppliers").update({ biz_verified_at: new Date().toISOString() }).eq("id", b.dataset.verify), "사업자 확인을 완료했습니다")) tabSup(); }));
+    $$("[data-restrict]").forEach((b) => (b.onclick = async () => { if (await call(sb.from("suppliers").update({ is_restricted: b.dataset.v === "1" }).eq("id", b.dataset.restrict), "변경했습니다")) tabSup(); }));
   }
 
-  if (DEMO) start();
-  else if (token && S.endpoint) start();
+  // ======================= 이의신청 =======================
+  const PENALTY = { required: ["required_mismatch", -10], condition: ["condition_mismatch", -3], no_contact: ["no_contact", -15] };
+  async function tabDis() {
+    const { data, error } = await sb.from("disputes").select("*").order("created_at", { ascending: false });
+    if (error) return ($("#body").innerHTML = `<p class="muted">${esc(errMsg(error))}</p>`);
+    const respIds = [...new Set(data.map((x) => x.response_id))], reqIds = [...new Set(data.map((x) => x.request_id))];
+    const [rs, rq] = await Promise.all([
+      respIds.length ? sb.from("responses").select("*").in("id", respIds) : { data: [] },
+      reqIds.length ? sb.from("requests").select("id, code, title").in("id", reqIds) : { data: [] },
+    ]);
+    const supIds = (rs.data || []).map((x) => x.supplier_id).filter(Boolean);
+    const sp = supIds.length ? await sb.from("suppliers").select("id, company_name").in("id", supIds) : { data: [] };
+    if (tab !== "dis") return;
+    const KIND = { required: "필수 항목 불일치", condition: "추가 조건 불일치", no_contact: "연락 두절" };
+    const ST = { open: ["접수", "s-amber"], awaiting_opinion: ["의견서 대기", "s-blue"], accepted: ["인정", "s-green"], rejected: ["불인정", "s-gray"] };
+    $("#body").innerHTML = data.length ? `<div class="rows">${data.map((x) => {
+      const resp = (rs.data || []).find((y) => y.id === x.response_id) || {};
+      const sup = (sp.data || []).find((y) => y.id === resp.supplier_id) || {};
+      const req = (rq.data || []).find((y) => y.id === x.request_id) || {};
+      const late = x.status === "awaiting_opinion" && !x.opinion && x.opinion_due && new Date(x.opinion_due) < new Date();
+      return `<div class="panel"><div class="row-top"><span class="sbadge ${ST[x.status][1]}">${ST[x.status][0]}</span><b>${esc(req.code)} ${esc(req.title)}</b><span class="right muted">${date(x.created_at, true)}</span></div>
+        <p style="margin:8px 0 4px"><b>${esc(sup.company_name || "비회원 공급자")}</b> · ${KIND[x.kind]}</p>
+        <p style="white-space:pre-wrap;margin:0">${esc(x.claim)}</p>
+        ${x.opinion ? `<div class="note info" style="margin-top:8px"><b>공급자 의견</b> (${date(x.opinion_at, true)})<br>${esc(x.opinion)}</div>` : late ? '<div class="note" style="margin-top:8px">의견서 기한이 지났습니다 (미제출 시 -5 추가)</div>' : ""}
+        ${x.status === "open" ? `<button class="btn btn-sm" data-ask="${x.id}" style="margin-top:10px" ${resp.supplier_id ? "" : "disabled"}>공급자에게 의견서 요청 (3영업일)</button> ${resp.supplier_id ? "" : '<span class="muted">비회원 공급자는 전화로 확인 후 바로 판정하세요</span>'}` : ""}
+        ${["open", "awaiting_opinion"].includes(x.status) ? `
+          <form class="form" data-decide="${x.id}" data-sup="${resp.supplier_id || ""}" data-kind="${x.kind}" data-late="${late ? 1 : 0}" style="padding:12px 0 0;border:0;gap:10px">
+            <div class="row3"><label>판정<select name="status"><option value="accepted">인정</option><option value="rejected">불인정</option></select></label>
+              <label>수요자 선택<select name="remedy"><option value="refund">환불</option><option value="replace">대체 업체</option><option value="">해당 없음</option></select></label>
+              <label>공급자 책임<select name="fault"><option value="1">있음 (점수 차감 ${PENALTY[x.kind][1]})</option><option value="0">없음 (불가항력·수요자 조건 변경)</option></select></label></div>
+            <label>판정 메모 (수요자에게 보임)<input name="note"></label>
+            <button class="btn btn-sm" type="submit">판정 저장</button></form>` : `<p class="muted" style="margin:8px 0 0">판정: ${esc(x.decision_note || "")} ${x.remedy ? "· " + (x.remedy === "refund" ? "환불" : "대체 업체") : ""} ${x.supplier_fault ? "· 공급자 책임" : ""}</p>`}
+      </div>`; }).join("")}</div>` : '<div class="panel muted">이의신청이 없습니다.</div>';
+    $$("[data-ask]").forEach((b) => (b.onclick = async () => {
+      const due = new Date(Date.now() + 3 * 86400000).toISOString();
+      if (await call(sb.from("disputes").update({ status: "awaiting_opinion", opinion_due: due }).eq("id", b.dataset.ask), "의견서를 요청했습니다")) tabDis();
+    }));
+    $$("[data-decide]").forEach((f) => (f.onsubmit = async (e) => {
+      e.preventDefault();
+      const accepted = f.status.value === "accepted", fault = f.fault.value === "1" && accepted;
+      const ok = await call(sb.from("disputes").update({ status: f.status.value, remedy: accepted ? f.remedy.value || null : null, supplier_fault: fault,
+        decision_note: f.note.value || null, decided_by: me.user.id, decided_at: new Date().toISOString() }).eq("id", f.dataset.decide));
+      if (!ok) return;
+      if (fault && f.dataset.sup) {
+        const [reason, delta] = PENALTY[f.dataset.kind];
+        const ev = [{ supplier_id: f.dataset.sup, delta, reason, dispute_id: f.dataset.decide }];
+        if (f.dataset.late === "1") ev.push({ supplier_id: f.dataset.sup, delta: -5, reason: "opinion_late", dispute_id: f.dataset.decide });
+        await call(sb.from("score_events").insert(ev));
+      }
+      toast("판정을 저장했습니다. 환불이면 의뢰 화면에서 환불을 기록하세요."); tabDis();
+    }));
+  }
+
+  // ======================= 요금 =======================
+  async function tabPrice() {
+    const { data } = await sb.from("pricing").select("*").order("key");
+    if (tab !== "price") return;
+    $("#body").innerHTML = `<div class="panel"><h2>요금·기준 설정</h2><p class="muted">바꾸면 홈페이지와 요청서 금액 계산에 바로 반영됩니다. 이미 접수된 의뢰 금액은 바뀌지 않습니다. 조건값별 가격은 분류 관리(추후)에서 바꿉니다.</p>
+      <div class="table-wrap"><table class="data"><tr><th>항목</th><th>값</th><th></th></tr>${(data || []).map((p) => `<tr><td>${esc(p.note || p.key)}<br><span class="muted">${esc(p.key)}</span></td>
+        <td><input type="number" data-k="${esc(p.key)}" value="${p.value}" style="font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px;width:140px"></td>
+        <td><button class="btn btn-sm btn-ghost" data-save="${esc(p.key)}">저장</button></td></tr>`).join("")}</table></div></div>`;
+    $$("[data-save]").forEach((b) => (b.onclick = async () => {
+      const v = +$(`[data-k="${b.dataset.save}"]`).value;
+      await call(sb.from("pricing").update({ value: v }).eq("key", b.dataset.save), "저장했습니다");
+    }));
+  }
+
+  show();
 })();
 </script>
 </body>
